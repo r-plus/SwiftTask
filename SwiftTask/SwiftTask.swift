@@ -57,24 +57,21 @@ public class TaskConfiguration
     }
 }
 
-open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
+open class Task<Value, Error>: Cancellable, CustomStringConvertible
 {
-    public typealias ProgressTuple = (oldProgress: Progress?, newProgress: Progress)
     public typealias ErrorInfo = (error: Error?, isCancelled: Bool)
     
-    public typealias ProgressHandler = (Progress) -> Void
     public typealias FulfillHandler = (Value) -> Void
     public typealias RejectHandler = (Error) -> Void
     public typealias Configuration = TaskConfiguration
     
     public typealias PromiseInitClosure = (_ fulfill: @escaping FulfillHandler, _ reject: @escaping RejectHandler) -> Void
-    public typealias InitClosure = (_ progress: @escaping ProgressHandler, _ fulfill: @escaping FulfillHandler, _ reject: @escaping RejectHandler, _ configure: TaskConfiguration) -> Void
+    public typealias InitClosure = (_ fulfill: @escaping FulfillHandler, _ reject: @escaping RejectHandler, _ configure: TaskConfiguration) -> Void
     
-    internal typealias _Machine = _StateMachine<Progress, Value, Error>
+    internal typealias _Machine = _StateMachine<Value, Error>
     
-    internal typealias _InitClosure = (_ machine: _Machine, _ progress: @escaping ProgressHandler, _ fulfill: @escaping FulfillHandler, _ _reject: @escaping _RejectInfoHandler, _ configure: TaskConfiguration) -> Void
+    internal typealias _InitClosure = (_ machine: _Machine, _ fulfill: @escaping FulfillHandler, _ _reject: @escaping _RejectInfoHandler, _ configure: TaskConfiguration) -> Void
     
-    internal typealias _ProgressTupleHandler = (ProgressTuple) -> Void
     internal typealias _RejectInfoHandler = (ErrorInfo) -> Void
     
     internal let _machine: _Machine
@@ -85,10 +82,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     internal var _initClosure: _InitClosure!    // retained throughout task's lifetime
     
     public var state: TaskState { return self._machine.state.rawValue }
-    
-    /// progress value (NOTE: always nil when `weakified = true`)
-    public var progress: Progress? { return self._machine.progress.rawValue }
-    
+        
     /// fulfilled value
     public var value: Value? { return self._machine.value.rawValue }
     
@@ -107,7 +101,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
             case .Rejected, .Cancelled:
                 valueString = "errorInfo=\(self.errorInfo!)"
             default:
-                valueString = "progress=\(String(describing: self.progress))"
+                valueString = ""
         }
         
         return "<\(self.name); state=\(self.state.rawValue); \(valueString!))>"
@@ -132,9 +126,9 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
         self._paused = paused
         self._machine = _Machine(weakified: weakified, paused: paused)
         
-        let _initClosure: _InitClosure = { _, progress, fulfill, _reject, configure in
+        let _initClosure: _InitClosure = { _, fulfill, _reject, configure in
             // NOTE: don't expose rejectHandler with ErrorInfo (isCancelled) for public init
-            initClosure(progress, fulfill, { error in _reject(ErrorInfo(error: Optional(error), isCancelled: false)) }, configure)
+            initClosure(fulfill, { error in _reject(ErrorInfo(error: Optional(error), isCancelled: false)) }, configure)
         }
         
         self.setup(weakified: weakified, paused: paused, _initClosure: _initClosure)
@@ -167,7 +161,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     ///
     public convenience init(value: Value)
     {
-        self.init(initClosure: { progress, fulfill, reject, configure in
+        self.init(initClosure: { fulfill, reject, configure in
             fulfill(value)
         })
         self.name = "FulfilledTask"
@@ -180,7 +174,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     ///
     public convenience init(error: Error)
     {
-        self.init(initClosure: { progress, fulfill, reject, configure in
+        self.init(initClosure: { fulfill, reject, configure in
             reject(error)
         })
         self.name = "RejectedTask"
@@ -188,7 +182,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     
     private convenience init(_errorInfo: ErrorInfo)
     {
-        self.init(_initClosure: { _, progress, fulfill, _reject, configure in
+        self.init(_initClosure: { _, fulfill, _reject, configure in
             _reject(_errorInfo)
         })
         self.name = "RejectedTask"
@@ -201,7 +195,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     ///
     public convenience init(promiseInitClosure: @escaping PromiseInitClosure)
     {
-        self.init(initClosure: { progress, fulfill, reject, configure in
+        self.init(initClosure: { fulfill, reject, configure in
             promiseInitClosure(fulfill, { error in reject(error) })
         })
     }
@@ -233,7 +227,6 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
             // strongify `self` on 1st resume
             if let self_ = self {
                 
-                var progressHandler: ProgressHandler
                 var fulfillHandler: FulfillHandler
                 var rejectInfoHandler: _RejectInfoHandler
                 
@@ -244,12 +237,6 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
                     // each handler will NOT capture `self_` (strongSelf on 1st resume)
                     // so it will immediately deinit if not retained in somewhere else.
                     //
-                    progressHandler = { [weak self_] (progress: Progress) in
-                        if let self_ = self_ {
-                            self_._machine.handleProgress(progress)
-                        }
-                    }
-                    
                     fulfillHandler = { [weak self_] (value: Value) in
                         if let self_ = self_ {
                             self_._machine.handleFulfill(value)
@@ -269,10 +256,6 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
                     // each handler will capture `self_` (strongSelf on 1st resume)
                     // so that it will live until fulfilled/rejected.
                     //
-                    progressHandler = { (progress: Progress) in
-                        self_._machine.handleProgress(progress)
-                    }
-                    
                     fulfillHandler = { (value: Value) in
                         self_._machine.handleFulfill(value)
                     }
@@ -282,7 +265,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
                     }
                 }
                 
-                _initClosure(self_._machine, progressHandler, fulfillHandler, rejectInfoHandler, self_._machine.configuration)
+                _initClosure(self_._machine, fulfillHandler, rejectInfoHandler, self_._machine.configuration)
                 
             }
         
@@ -325,7 +308,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     {
         guard maxRetryCount > 0 else { return self }
         
-        return Task { machine, progress, fulfill, _reject, configure in
+        return Task { machine, fulfill, _reject, configure in
             
 //            let task = self.progress { _, progressValue in
 //                progress(progressValue)
@@ -370,16 +353,16 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    @discardableResult public func then<Value2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Progress, Value2, Error>
+    @discardableResult public func then<Value2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
     {
         var dummyCanceller: Canceller? = nil
         return self.then(&dummyCanceller, thenClosure)
     }
     
-    public func then<Value2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Progress, Value2, Error>
+    public func then<Value2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
     {
-        return self.then(&canceller) { (value, errorInfo) -> Task<Progress, Value2, Error> in
-            return Task<Progress, Value2, Error>(value: thenClosure(value, errorInfo))
+        return self.then(&canceller) { (value, errorInfo) -> Task<Value2, Error> in
+            return Task<Value2, Error>(value: thenClosure(value, errorInfo))
         }
     }
     
@@ -391,7 +374,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    public func then<Progress2, Value2, Error2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Progress2, Value2, Error2>) -> Task<Progress2, Value2, Error2>
+    public func then<Value2, Error2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
     {
         var dummyCanceller: Canceller? = nil
         return self.then(&dummyCanceller, thenClosure)
@@ -405,9 +388,9 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     //
     /// - Returns: New `Task`
     ///
-    public func then<Progress2, Value2, Error2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Progress2, Value2, Error2>) -> Task<Progress2, Value2, Error2>
+    public func then<Value2, Error2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
     {
-        return Task<Progress2, Value2, Error2> { [unowned self, weak canceller] newMachine, progress, fulfill, _reject, configure in
+        return Task<Value2, Error2> { [unowned self, weak canceller] newMachine, fulfill, _reject, configure in
             
             //
             // NOTE: 
@@ -420,7 +403,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
             
             self._then(&canceller) {
                 let innerTask = thenClosure(selfMachine.value.rawValue, selfMachine.errorInfo.rawValue)
-                _bindInnerTask(innerTask, newMachine, progress, fulfill, _reject, configure)
+                _bindInnerTask(innerTask, newMachine, fulfill, _reject, configure)
             }
             
         }.name("\(self.name)-then")
@@ -450,16 +433,16 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    @discardableResult public func success<Value2>(_ successClosure: @escaping (Value) -> Value2) -> Task<Progress, Value2, Error>
+    @discardableResult public func success<Value2>(_ successClosure: @escaping (Value) -> Value2) -> Task<Value2, Error>
     {
         var dummyCanceller: Canceller? = nil
         return self.success(&dummyCanceller, successClosure)
     }
     
-    public func success<Value2, C: Canceller>(_ canceller: inout C?, _ successClosure: @escaping (Value) -> Value2) -> Task<Progress, Value2, Error>
+    public func success<Value2, C: Canceller>(_ canceller: inout C?, _ successClosure: @escaping (Value) -> Value2) -> Task<Value2, Error>
     {
-        return self.success(&canceller) { (value: Value) -> Task<Progress, Value2, Error> in
-            return Task<Progress, Value2, Error>(value: successClosure(value))
+        return self.success(&canceller) { (value: Value) -> Task<Value2, Error> in
+            return Task<Value2, Error>(value: successClosure(value))
         }
     }
     
@@ -471,16 +454,16 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    public func success<Progress2, Value2, Error2>(_ successClosure: @escaping (Value) -> Task<Progress2, Value2, Error2>) -> Task<Progress2, Value2, Error>
+    public func success<Value2, Error2>(_ successClosure: @escaping (Value) -> Task<Value2, Error2>) -> Task<Value2, Error>
     {
         var dummyCanceller: Canceller? = nil
         return self.success(&dummyCanceller, successClosure)
     }
     
-    public func success<Progress2, Value2, Error2, C: Canceller>(_ canceller: inout C?, _ successClosure: @escaping (Value) -> Task<Progress2, Value2, Error2>) -> Task<Progress2, Value2, Error>
+    public func success<Value2, Error2, C: Canceller>(_ canceller: inout C?, _ successClosure: @escaping (Value) -> Task<Value2, Error2>) -> Task<Value2, Error>
     {
         var localCanceller = canceller; defer { canceller = localCanceller }
-        return Task<Progress2, Value2, Error> { [unowned self] newMachine, progress, fulfill, _reject, configure in
+        return Task<Value2, Error> { [unowned self] newMachine, fulfill, _reject, configure in
             
             let selfMachine = self._machine
             
@@ -488,7 +471,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
             self._then(&localCanceller) {
                 if let value = selfMachine.value.rawValue {
                     let innerTask = successClosure(value)
-                    _bindInnerTask(innerTask, newMachine, progress, fulfill, _reject, configure)
+                    _bindInnerTask(innerTask, newMachine, fulfill, _reject, configure)
                 }
                 else if let errorInfo = selfMachine.errorInfo.rawValue {
                     _reject(errorInfo)
@@ -529,16 +512,16 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    public func failure<Progress2, Error2>(_ failureClosure: @escaping (ErrorInfo) -> Task<Progress2, Value, Error2>) -> Task<Progress2, Value, Error2>
+    public func failure<Error2>(_ failureClosure: @escaping (ErrorInfo) -> Task<Value, Error2>) -> Task<Value, Error2>
     {
         var dummyCanceller: Canceller? = nil
         return self.failure(&dummyCanceller, failureClosure)
     }
     
-    public func failure<Progress2, Error2, C: Canceller>(_ canceller: inout C?, _ failureClosure: @escaping (ErrorInfo) -> Task<Progress2, Value, Error2>) -> Task<Progress2, Value, Error2>
+    public func failure<Error2, C: Canceller>(_ canceller: inout C?, _ failureClosure: @escaping (ErrorInfo) -> Task<Value, Error2>) -> Task<Value, Error2>
     {
         var localCanceller = canceller; defer { canceller = localCanceller }
-        return Task<Progress2, Value, Error2> { [unowned self] newMachine, progress, fulfill, _reject, configure in
+        return Task<Value, Error2> { [unowned self] newMachine, fulfill, _reject, configure in
             
             let selfMachine = self._machine
             
@@ -548,7 +531,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
                 }
                 else if let errorInfo = selfMachine.errorInfo.rawValue {
                     let innerTask = failureClosure(errorInfo)
-                    _bindInnerTask(innerTask, newMachine, progress, fulfill, _reject, configure)
+                    _bindInnerTask(innerTask, newMachine, fulfill, _reject, configure)
                 }
             }
             
@@ -605,12 +588,11 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
 
 // MARK: - Helper
 
-internal func _bindInnerTask<Progress2, Value2, Error, Error2>(
-    _ innerTask: Task<Progress2, Value2, Error2>,
-    _ newMachine: _StateMachine<Progress2, Value2, Error>,
-    _ progress: @escaping Task<Progress2, Value2, Error>.ProgressHandler,
-    _ fulfill: @escaping Task<Progress2, Value2, Error>.FulfillHandler,
-    _ _reject: @escaping Task<Progress2, Value2, Error>._RejectInfoHandler,
+internal func _bindInnerTask<Value2, Error, Error2>(
+    _ innerTask: Task<Value2, Error2>,
+    _ newMachine: _StateMachine<Value2, Error>,
+    _ fulfill: @escaping Task<Value2, Error>.FulfillHandler,
+    _ _reject: @escaping Task<Value2, Error>._RejectInfoHandler,
     _ configure: TaskConfiguration
     )
 {
@@ -628,9 +610,7 @@ internal func _bindInnerTask<Progress2, Value2, Error, Error2>(
             break
     }
     
-//    innerTask.progress { _, progressValue in
-//        progress(progressValue)
-    innerTask.then { (value: Value2?, errorInfo2: Task<Progress2, Value2, Error2>.ErrorInfo?) -> Void in
+    innerTask.then { (value: Value2?, errorInfo2: Task<Value2, Error2>.ErrorInfo?) -> Void in
         if let value = value {
             fulfill(value)
         }
@@ -659,15 +639,13 @@ internal func _bindInnerTask<Progress2, Value2, Error, Error2>(
 
 extension Task
 {
-    public typealias BulkProgress = (completedCount: Int, totalCount: Int)
-    
-    public class func all(_ tasks: [Task]) -> Task<BulkProgress, [Value], Error>
+    public class func all(_ tasks: [Task]) -> Task<[Value], Error>
     {
         guard !tasks.isEmpty else {
-            return Task<BulkProgress, [Value], Error>(value: [])
+            return Task<[Value], Error>(value: [])
         }
 
-        return Task<BulkProgress, [Value], Error> { machine, progress, fulfill, _reject, configure in
+        return Task<[Value], Error> { machine, fulfill, _reject, configure in
             
             var completedCount = 0
             let totalCount = tasks.count
@@ -679,9 +657,6 @@ extension Task
                     
                     lock.lock()
                     completedCount += 1
-                    
-                    let progressTuple = BulkProgress(completedCount: completedCount, totalCount: totalCount)
-                    progress(progressTuple)
                     
                     if completedCount == totalCount {
                         var values: [Value] = Array()
