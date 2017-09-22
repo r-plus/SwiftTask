@@ -362,32 +362,6 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
         }.name("\(self.name)-try(\(maxRetryCount))")
     }
     
-//    ///
-//    /// Add progress handler delivered from `initClosure`'s `progress()` argument.
-//    ///
-//    /// - e.g. task.progress { oldProgress, newProgress in ... }
-//    ///
-//    /// - Note: `oldProgress` is always nil when `weakified = true`
-//    /// - Returns: Self (same `Task`)
-//    ///
-//    @discardableResult public func progress(_ progressClosure: @escaping (ProgressTuple) -> Void) -> Self
-//    {
-//        var dummyCanceller: Canceller? = nil
-//        return self.progress(&dummyCanceller, progressClosure)
-//    }
-//
-//    public func progress<C: Canceller>(_ canceller: inout C?, _ progressClosure: @escaping (ProgressTuple) -> Void) -> Self
-//    {
-//        var token: _HandlerToken? = nil
-//        self._machine.addProgressTupleHandler(&token, progressClosure)
-//
-//        canceller = C { [weak self] in
-//            self?._machine.removeProgressTupleHandler(token)
-//        }
-//
-//        return self
-//    }
-    
     ///
     /// `then` (fulfilled & rejected) + closure returning **value**.
     /// (similar to `map` in functional programming)
@@ -744,98 +718,6 @@ extension Task
             }
             
         }.name("Task.all")
-    }
-    
-    public class func any(_ tasks: [Task]) -> Task
-    {
-        precondition(!tasks.isEmpty, "`Task.any(tasks)` with empty `tasks` should not be called. It will never be fulfilled or rejected.")
-
-        return Task<Progress, Value, Error> { machine, progress, fulfill, _reject, configure in
-            
-            var completedCount = 0
-            var rejectedCount = 0
-            let totalCount = tasks.count
-            let lock = _RecursiveLock()
-            
-            for task in tasks {
-                task.success { (value: Value) -> Void in
-                    
-                    lock.lock()
-                    completedCount += 1
-                    
-                    if completedCount == 1 {
-                        fulfill(value)
-                        
-                        self.cancelAll(tasks)
-                    }
-                    lock.unlock()
-                    
-                }.failure { (errorInfo: ErrorInfo) -> Void in
-                    
-                    lock.lock()
-                    rejectedCount += 1
-                    
-                    if rejectedCount == totalCount {
-                        let isAnyCancelled = (tasks.filter { task in task.state == .Cancelled }.count > 0)
-                        
-                        let errorInfo = ErrorInfo(error: nil, isCancelled: isAnyCancelled)  // NOTE: Task.any error returns nil (spec)
-                        _reject(errorInfo)
-                    }
-                    lock.unlock()
-                }
-            }
-            
-            configure.pause = { self.pauseAll(tasks); return }
-            configure.resume = { self.resumeAll(tasks); return }
-            configure.cancel = { self.cancelAll(tasks); return }
-            
-        }.name("Task.any")
-    }
-    
-    /// Returns new task which performs all given tasks and stores only fulfilled values.
-    /// This new task will NEVER be internally rejected.
-    public class func some(_ tasks: [Task]) -> Task<BulkProgress, [Value], Error>
-    {
-        guard !tasks.isEmpty else {
-            return Task<BulkProgress, [Value], Error>(value: [])
-        }
-
-        return Task<BulkProgress, [Value], Error> { machine, progress, fulfill, _reject, configure in
-            
-            var completedCount = 0
-            let totalCount = tasks.count
-            let lock = _RecursiveLock()
-            
-            for task in tasks {
-                task.then { (value: Value?, errorInfo: ErrorInfo?) -> Void in
-                    
-                    lock.lock()
-                    completedCount += 1
-                    
-                    let progressTuple = BulkProgress(completedCount: completedCount, totalCount: totalCount)
-                    progress(progressTuple)
-                    
-                    if completedCount == totalCount {
-                        var values: [Value] = Array()
-                        
-                        for task in tasks {
-                            if task.state == .Fulfilled {
-                                values.append(task.value!)
-                            }
-                        }
-                        
-                        fulfill(values)
-                    }
-                    lock.unlock()
-                    
-                }
-            }
-            
-            configure.pause = { self.pauseAll(tasks); return }
-            configure.resume = { self.resumeAll(tasks); return }
-            configure.cancel = { self.cancelAll(tasks); return }
-            
-        }.name("Task.some")
     }
     
     public class func cancelAll(_ tasks: [Task])
