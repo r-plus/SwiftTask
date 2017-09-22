@@ -107,7 +107,7 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
             case .Rejected, .Cancelled:
                 valueString = "errorInfo=\(self.errorInfo!)"
             default:
-                valueString = "progress=\(self.progress)"
+                valueString = "progress=\(String(describing: self.progress))"
         }
         
         return "<\(self.name); state=\(self.state.rawValue); \(valueString!))>"
@@ -327,9 +327,9 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
         
         return Task { machine, progress, fulfill, _reject, configure in
             
-            let task = self.progress { _, progressValue in
-                progress(progressValue)
-            }.failure { [unowned self] errorInfo -> Task in
+//            let task = self.progress { _, progressValue in
+//                progress(progressValue)
+            let task = self.failure { [unowned self] errorInfo -> Task in
                 if condition(errorInfo) {
                     return self.clone().retry(maxRetryCount-1, condition: condition) // clone & try recursively
                 }
@@ -338,9 +338,9 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
                 }
             }
                 
-            task.progress { _, progressValue in
-                progress(progressValue) // also receive progresses from clone-try-task
-            }.success { value -> Void in
+//            task.progress { _, progressValue in
+//                progress(progressValue) // also receive progresses from clone-try-task
+            task.success { value -> Void in
                 fulfill(value)
             }.failure { errorInfo -> Void in
                 _reject(errorInfo)
@@ -362,31 +362,31 @@ open class Task<Progress, Value, Error>: Cancellable, CustomStringConvertible
         }.name("\(self.name)-try(\(maxRetryCount))")
     }
     
-    ///
-    /// Add progress handler delivered from `initClosure`'s `progress()` argument.
-    ///
-    /// - e.g. task.progress { oldProgress, newProgress in ... }
-    ///
-    /// - Note: `oldProgress` is always nil when `weakified = true`
-    /// - Returns: Self (same `Task`)
-    ///
-    @discardableResult public func progress(_ progressClosure: @escaping (ProgressTuple) -> Void) -> Self
-    {
-        var dummyCanceller: Canceller? = nil
-        return self.progress(&dummyCanceller, progressClosure)
-    }
-    
-    public func progress<C: Canceller>(_ canceller: inout C?, _ progressClosure: @escaping (ProgressTuple) -> Void) -> Self
-    {
-        var token: _HandlerToken? = nil
-        self._machine.addProgressTupleHandler(&token, progressClosure)
-        
-        canceller = C { [weak self] in
-            self?._machine.removeProgressTupleHandler(token)
-        }
-        
-        return self
-    }
+//    ///
+//    /// Add progress handler delivered from `initClosure`'s `progress()` argument.
+//    ///
+//    /// - e.g. task.progress { oldProgress, newProgress in ... }
+//    ///
+//    /// - Note: `oldProgress` is always nil when `weakified = true`
+//    /// - Returns: Self (same `Task`)
+//    ///
+//    @discardableResult public func progress(_ progressClosure: @escaping (ProgressTuple) -> Void) -> Self
+//    {
+//        var dummyCanceller: Canceller? = nil
+//        return self.progress(&dummyCanceller, progressClosure)
+//    }
+//
+//    public func progress<C: Canceller>(_ canceller: inout C?, _ progressClosure: @escaping (ProgressTuple) -> Void) -> Self
+//    {
+//        var token: _HandlerToken? = nil
+//        self._machine.addProgressTupleHandler(&token, progressClosure)
+//
+//        canceller = C { [weak self] in
+//            self?._machine.removeProgressTupleHandler(token)
+//        }
+//
+//        return self
+//    }
     
     ///
     /// `then` (fulfilled & rejected) + closure returning **value**.
@@ -654,9 +654,9 @@ internal func _bindInnerTask<Progress2, Value2, Error, Error2>(
             break
     }
     
-    innerTask.progress { _, progressValue in
-        progress(progressValue)
-    }.then { (value: Value2?, errorInfo2: Task<Progress2, Value2, Error2>.ErrorInfo?) -> Void in
+//    innerTask.progress { _, progressValue in
+//        progress(progressValue)
+    innerTask.then { (value: Value2?, errorInfo2: Task<Progress2, Value2, Error2>.ErrorInfo?) -> Void in
         if let value = value {
             fulfill(value)
         }

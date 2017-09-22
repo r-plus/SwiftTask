@@ -21,7 +21,6 @@
 		1FB3B8F31B0A194F00F78900 /* _Atomic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FB3B8F21B0A194F00F78900 /* _Atomic.swift */; };
 		1FB3B8F71C5CF2CA00C1A479 /* SwiftTask.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1F46DED4199EDF1000F97868 /* SwiftTask.framework */; };
 		1FCF71121AD8CD2B007079C2 /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1FCF71111AD8CD2B007079C2 /* Alamofire.framework */; };
-		1FCF71161AD8CD38007079C2 /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1FCF71151AD8CD38007079C2 /* Alamofire.framework */; };
 		1FD7197B1AFE387C00BC38C4 /* Cancellable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FD7197A1AFE387C00BC38C4 /* Cancellable.swift */; };
 		1FF52EB41A4C395A00B4BA28 /* _InterruptableTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FF52EB31A4C395A00B4BA28 /* _InterruptableTask.swift */; };
 		1FF52EB51A4C395A00B4BA28 /* _InterruptableTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FF52EB31A4C395A00B4BA28 /* _InterruptableTask.swift */; };
@@ -104,7 +103,6 @@
 			files = (
 				48A1E8221A366F9C007619EB /* SwiftTask.framework in Frameworks */,
 				1F4C7AD71B7CD27200DEB1AE /* Async.framework in Frameworks */,
-				1FCF71161AD8CD38007079C2 /* Alamofire.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -307,7 +305,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0700;
-				LastUpgradeCheck = 0800;
+				LastUpgradeCheck = 0900;
 				ORGANIZATIONNAME = "Yasuhiro Inami";
 				TargetAttributes = {
 					1F46DED3199EDF1000F97868 = {
@@ -316,10 +314,11 @@
 					};
 					1F46DEDE199EDF1000F97868 = {
 						CreatedOnToolsVersion = 6.0;
-						LastSwiftMigration = 0800;
+						LastSwiftMigration = 0900;
 					};
 					4822F0CF19D00ABF00F5F572 = {
 						CreatedOnToolsVersion = 6.0.1;
+						DevelopmentTeam = PU8FVM5KSG;
 					};
 				};
 			};
@@ -437,13 +436,21 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
@@ -464,6 +471,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_SWIFT_FLAGS = "-DDEBUG";
@@ -482,13 +490,21 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
@@ -504,6 +520,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
@@ -526,6 +543,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.inamiy.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(PROJECT_NAME)";
 				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 4.0;
 			};
 			name = Debug;
 		};
@@ -545,6 +563,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.inamiy.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(PROJECT_NAME)";
 				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 4.0;
 			};
 			name = Release;
 		};
@@ -561,6 +580,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.inamiy.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
 			};
 			name = Debug;
 		};
@@ -573,6 +594,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.inamiy.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				SWIFT_SWIFT3_OBJC_INFERENCE = On;
+				SWIFT_VERSION = 4.0;
 			};
 			name = Release;
 		};
@@ -580,6 +603,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1FFADCDE1C5CEC1B000B66BE /* UniversalFramework_Test.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = PU8FVM5KSG;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -595,6 +619,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1FFADCDE1C5CEC1B000B66BE /* UniversalFramework_Test.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = PU8FVM5KSG;
 				INFOPLIST_FILE = SwiftTaskTests/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.inamiy.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";

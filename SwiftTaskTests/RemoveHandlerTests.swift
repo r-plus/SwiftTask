@@ -18,7 +18,6 @@ class RemoveHandlerTests: _TestCase
         
         let expect = self.expectation(description: #function)
         
-        var latestProgressValue: Float?
         var canceller: AutoCanceller? = nil
         
         // define task
@@ -28,16 +27,6 @@ class RemoveHandlerTests: _TestCase
                 progress(1.0)
                 fulfill("OK")
             }
-        }.progress { oldProgress, newProgress in
-            
-            print("progress1 = \(newProgress)")
-            latestProgressValue = newProgress
-        
-        }.progress(&canceller) { oldProgress, newProgress in
-            
-            print("progress2 = \(newProgress)")
-            XCTFail("Should never reach here because this progress-handler will be removed soon.")
-            
         }.then { value, errorInfo -> Void in
             
             XCTAssertTrue(value == "OK")
@@ -52,8 +41,6 @@ class RemoveHandlerTests: _TestCase
         canceller = nil
         
         self.wait()
-        
-        XCTAssertTrue(latestProgressValue == 1.0)
     }
     
     func testRemoveThen()
@@ -86,8 +73,8 @@ class RemoveHandlerTests: _TestCase
             
         }.then { value, errorInfo -> Void in
             
-            print("value = \(value)")
-            print("errorInfo = \(errorInfo)")
+            print("value = \(String(describing: value))")
+            print("errorInfo = \(String(describing: errorInfo))")
             
             XCTAssertTrue(value == nil)
             XCTAssertTrue(errorInfo != nil)

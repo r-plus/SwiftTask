@@ -7,7 +7,7 @@
 //
 
 import SwiftTask
-import Async
+//import Async
 import XCTest
 
 class BasicTests: _TestCase
@@ -21,7 +21,8 @@ class BasicTests: _TestCase
         // define task
         let task = Task { progress, fulfill, reject, configure in
             
-            Async.main(after: 0.1) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+//            Async.main(after: 0.1) {
                 progress(0.0)
                 progress(1.0)
                 
@@ -36,11 +37,11 @@ class BasicTests: _TestCase
             
         }
         
-        task.progress { oldProgress, newProgress in
-            
-            print("progress = \(newProgress)")
-            
-        }.success { value -> String in  // `task.success {...}` = JavaScript's `promise.then(onFulfilled)`
+//        task.progress { oldProgress, newProgress in
+        
+//            print("progress = \(newProgress)")
+        
+        task.success { value -> String in  // `task.success {...}` = JavaScript's `promise.then(onFulfilled)`
             
             XCTAssertEqual(value, "OK")
             return "Now OK"
@@ -52,7 +53,7 @@ class BasicTests: _TestCase
             
         }.then { value, errorInfo -> Task in // `task.then {...}` = JavaScript's `promise.then(onFulfilled, onRejected)`
             
-            print("value = \(value)") // either "Now OK" or "Now RECOVERED"
+            print("value = \(String(describing: value))") // either "Now OK" or "Now RECOVERED"
             
             XCTAssertTrue(value!.hasPrefix("Now"))
             XCTAssertTrue(errorInfo == nil)
@@ -61,7 +62,7 @@ class BasicTests: _TestCase
             
         }.then { value, errorInfo -> Void in
                 
-            print("errorInfo = \(errorInfo)")
+            print("errorInfo = \(String(describing: errorInfo))")
             
             XCTAssertTrue(value == nil)
             XCTAssertEqual(errorInfo!.error!, "ABORT")

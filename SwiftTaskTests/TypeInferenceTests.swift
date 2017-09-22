@@ -15,8 +15,6 @@ class TypeInferenceTests: _TestCase
     {
         Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
             fulfill("OK")
-        }.progress { oldPrgoress, newProgress in
-            // do nothing
         }.success { value -> [String] in    // NOTE: although explicitly adding closure-returning type is required, closure-argument type can be omitted
             return ["Looks", "good", "to", "me"]
         }.failure { errorInfo -> [String] in

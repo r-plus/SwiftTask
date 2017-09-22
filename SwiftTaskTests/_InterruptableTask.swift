@@ -7,7 +7,7 @@
 //
 
 import SwiftTask
-import Async
+//import Async
 typealias _InterruptableTask = Task<Int, String, String>
 
 /// 1. Invokes `progressCount/2` progresses at t=0.2
@@ -23,15 +23,18 @@ func _interruptableTask(progressCount: Int, finalState: TaskState = .Fulfilled) 
         var isPaused = false
         
         // 1st delay (t=0.2)
-        Async.background(after: 0.2) {
-            
+        DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 0.2) {
+//        Async.background(after: 0.2) {
+        
             for p in 1...progressCount/2 {
-                Async.main { progress(p) }
+                DispatchQueue.main.async { progress(p) }
+//                Async.main { progress(p) }
             }
             
             // 2nd delay (t=0.4)
-            Async.background(after: 0.2) {
-                
+            DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 0.2) {
+//            Async.background(after: 0.2) {
+            
                 // NOTE: no need to call reject() because it's already rejected (cancelled) internally
                 if isCancelled { return }
                 
@@ -41,10 +44,10 @@ func _interruptableTask(progressCount: Int, finalState: TaskState = .Fulfilled) 
                 }
                 
                 for p in progressCount/2+1...progressCount {
-                    Async.main { progress(p) }
+                    DispatchQueue.main.async { progress(p) }
                 }
                 
-                Async.main {
+                DispatchQueue.main.async {
                     if finalState == .Fulfilled {
                         fulfill("OK")
                     }
