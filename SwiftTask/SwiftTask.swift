@@ -666,7 +666,7 @@ internal func _bindInnerTask<Value2, Error, Error2>(
 
 extension Task
 {
-    public class func all(_ tasks: [Task]) -> Task<[Value], Error>
+    public class func all(_ tasks: [Task], concurrency: UInt = UInt.max) -> Task<[Value], Error>
     {
         guard !tasks.isEmpty else {
             return Task<[Value], Error>(value: [])
@@ -678,6 +678,7 @@ extension Task
             let totalCount = tasks.count
             let lock = _RecursiveLock()
             let cancelled = _Atomic(false)
+            var resumedCount = 0
             
             for task in tasks {
                 task.success { (value: Value) -> Void in
@@ -693,7 +694,11 @@ extension Task
                         }
                         
                         fulfill(values)
+                    } else {
+                        let pausedTask = tasks.first(where: { $0.state == .Paused })
+                        pausedTask?.resume()
                     }
+                    
                     lock.unlock()
                     
                 }.failure { (errorInfo: ErrorInfo) -> Void in
@@ -708,6 +713,10 @@ extension Task
                         }
                         lock.unlock()
                     }
+                }
+                if resumedCount < concurrency {
+                    task.resume()
+                    resumedCount += 1
                 }
             }
             
