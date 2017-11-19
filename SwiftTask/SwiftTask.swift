@@ -353,13 +353,13 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    @discardableResult public func then<Value2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
+    @discardableResult func then<Value2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
     {
         var dummyCanceller: Canceller? = nil
         return self.then(&dummyCanceller, thenClosure)
     }
     
-    public func then<Value2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
+    func then<Value2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
     {
         return self.then(&canceller) { (value, errorInfo) -> Task<Value2, Error> in
             return Task<Value2, Error>(value: thenClosure(value, errorInfo))
@@ -374,7 +374,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    public func then<Value2, Error2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
+    func then<Value2, Error2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
     {
         var dummyCanceller: Canceller? = nil
         return self.then(&dummyCanceller, thenClosure)
@@ -388,7 +388,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     //
     /// - Returns: New `Task`
     ///
-    public func then<Value2, Error2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
+    func then<Value2, Error2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
     {
         return Task<Value2, Error2> { [unowned self, weak canceller] newMachine, fulfill, _reject, configure in
             
