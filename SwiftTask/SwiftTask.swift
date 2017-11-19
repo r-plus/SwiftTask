@@ -540,13 +540,20 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     
     // MARK: - finally
     
-    public func finally(_ closure: @escaping () -> Void) -> Task<Value, Error> {
+    public func finally(_ closure: @escaping () -> Void) -> Task<Value, Error>
+    {
+        var dummyCanceller: Canceller? = nil
+        return self.finally(&dummyCanceller, closure)
+    }
+    
+    public func finally<C: Canceller>(_ canceller: inout C?, _ closure: @escaping () -> Void) -> Task<Value, Error> {
+        
+        var localCanceller = canceller; defer { canceller = localCanceller }
         return Task<Value, Error> { [unowned self] newMachine, fulfill, reject, configure in
             
-            var dummyCanceller: Canceller? = nil
             let selfMachine = self._machine
             
-            self._then(&dummyCanceller) {
+            self._then(&localCanceller) {
                 closure()
                 if let value = selfMachine.value.rawValue {
                     fulfill(value)
