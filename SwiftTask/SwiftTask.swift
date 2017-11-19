@@ -538,6 +538,26 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         }.name("\(self.name)-failure")
     }
     
+    // MARK: - finally
+    
+    public func finally(_ closure: @escaping () -> Void) -> Task<Value, Error> {
+        return Task<Value, Error> { [unowned self] newMachine, fulfill, reject, configure in
+            
+            var dummyCanceller: Canceller? = nil
+            let selfMachine = self._machine
+            
+            self._then(&dummyCanceller) {
+                closure()
+                if let value = selfMachine.value.rawValue {
+                    fulfill(value)
+                }
+                else if let errorInfo = selfMachine.errorInfo.rawValue {
+                    reject(errorInfo)
+                }
+            }
+        }.name("\(self.name)-finally")
+    }
+    
     ///
     /// Add side-effects after completion.
     ///
