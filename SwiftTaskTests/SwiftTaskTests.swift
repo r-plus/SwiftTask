@@ -422,6 +422,47 @@ class SwiftTaskTests: _TestCase
         self.wait()
     }
     
+    // MARK: - Finally
+    
+    func testFinally_success() {
+        let expect = self.expectation(description: #function)
+        var fin = false
+        
+        Task<String, ErrorString> { fulfill, reject, configure in
+            self.perform {
+                fulfill("OK")
+            }
+        }.finally {
+            fin = true
+        }.success { (value) -> Void in
+            XCTAssert(fin)
+            expect.fulfill()
+        }
+
+        self.wait()
+    }
+    
+    func testFinally_failure() {
+        let expect = self.expectation(description: #function)
+        var fin = false
+        
+        Task<String, ErrorString> { fulfill, reject, configure in
+            self.perform {
+                reject("NG")
+            }
+        }.success { value -> Void in
+            XCTFail("Should never reach here.")
+        }.finally {
+            fin = true
+        }.failure { error, isCancelled -> Void in
+            XCTAssert(fin)
+            XCTAssertEqual(error!, "NG")
+            expect.fulfill()
+        }
+        
+        self.wait()
+    }
+    
     //--------------------------------------------------
     // MARK: - On
     //--------------------------------------------------

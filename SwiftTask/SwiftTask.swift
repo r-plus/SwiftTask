@@ -540,6 +540,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     
     // MARK: - finally
     
+    @discardableResult
     public func finally(_ closure: @escaping () -> Void) -> Task<Value, Error>
     {
         var dummyCanceller: Canceller? = nil
