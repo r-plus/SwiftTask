@@ -548,21 +548,11 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     
     public func finally<C: Canceller>(_ canceller: inout C?, _ closure: @escaping () -> Void) -> Task<Value, Error> {
         
-        var localCanceller = canceller; defer { canceller = localCanceller }
-        return Task<Value, Error> { [unowned self] newMachine, fulfill, reject, configure in
-            
-            let selfMachine = self._machine
-            
-            self._then(&localCanceller) {
-                closure()
-                if let value = selfMachine.value.rawValue {
-                    fulfill(value)
-                }
-                else if let errorInfo = selfMachine.errorInfo.rawValue {
-                    reject(errorInfo)
-                }
-            }
-        }.name("\(self.name)-finally")
+        self._then(&canceller) {
+            closure()
+        }
+        
+        return self.name("\(self.name)-finally")
     }
     
     ///
