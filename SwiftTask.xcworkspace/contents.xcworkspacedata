@@ -10,9 +10,6 @@
       <FileRef
          location = "group:02-Async.playground">
       </FileRef>
-      <FileRef
-         location = "group:03-Alamofire.playground">
-      </FileRef>
    </Group>
    <Group
       location = "group:Carthage/Checkouts"
