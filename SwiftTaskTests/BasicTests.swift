@@ -6,7 +6,7 @@
 //  Copyright (c) 2014年 Yasuhiro Inami. All rights reserved.
 //
 
-import SwiftTask
+@testable import SwiftTask
 //import Async
 import XCTest
 
@@ -14,18 +14,16 @@ class BasicTests: _TestCase
 {
     func testExample()
     {
-        typealias Task = SwiftTask.Task<Float, String, ErrorString>
+        typealias Task = SwiftTask.Task<String, ErrorString>
         
         let expect = self.expectation(description: #function)
         
         // define task
-        let task = Task { progress, fulfill, reject, configure in
+        let task = Task { fulfill, reject, configure in
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
 //            Async.main(after: 0.1) {
-                progress(0.0)
-                progress(1.0)
-                
+
                 if arc4random_uniform(2) == 0 {
                     fulfill("OK")
                 }

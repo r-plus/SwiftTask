@@ -6,7 +6,7 @@
 //  Copyright © 2016 Yasuhiro Inami. All rights reserved.
 //
 
-import SwiftTask
+@testable import SwiftTask
 import XCTest
 
 /// Generic type for value/error to demonstrate multiple tasks working on different types.
@@ -38,9 +38,9 @@ class MultipleTasksTests: _TestCase
 
         var flow = [Int]()
 
-        let task1 = { Task<(), Value1, Error1>(value: .Default).on(success: { _ in flow.append(1) }) }
-        let task2 = { Task<(), Value2, Error2>(value: .Default).on(success: { _ in flow.append(2) }) }
-        let task3 = { Task<(), Value3, Error3>(value: .Default).on(success: { _ in flow.append(3) }) }
+        let task1 = { Task<Value1, Error1>(value: .Default).on(success: { _ in flow.append(1) }) }
+        let task2 = { Task<Value2, Error2>(value: .Default).on(success: { _ in flow.append(2) }) }
+        let task3 = { Task<Value3, Error3>(value: .Default).on(success: { _ in flow.append(3) }) }
 
         task1()._mapError(WrappedError.ByTask1)
             .success { _ in
@@ -63,9 +63,9 @@ class MultipleTasksTests: _TestCase
 
         var flow = [Int]()
 
-        let task1 = { Task<(), Value1, Error1>(value: .Default).on(success: { _ in flow.append(1) }) }
-        let task2 = { Task<(), Value2, Error2>(value: .Default).on(success: { _ in flow.append(2) }) }
-        let task3 = { Task<(), Value3, Error3>(error: .Default).on(success: { _ in flow.append(3) }) }
+        let task1 = { Task<Value1, Error1>(value: .Default).on(success: { _ in flow.append(1) }) }
+        let task2 = { Task<Value2, Error2>(value: .Default).on(success: { _ in flow.append(2) }) }
+        let task3 = { Task<Value3, Error3>(error: .Default).on(success: { _ in flow.append(3) }) }
 
         task1()._mapError(WrappedError.ByTask1)
             .success { _ in
@@ -93,9 +93,9 @@ class MultipleTasksTests: _TestCase
 
         var flow = [Int]()
 
-        let task1 = { Task<(), Value1, Error1>(value: .Default).on(success: { _ in flow.append(1) }) }
-        let task2 = { Task<(), Value2, Error2>(error: .Default).on(success: { _ in flow.append(2) }) }
-        let task3 = { Task<(), Value3, Error3>(value: .Default).on(success: { _ in flow.append(3) }) }
+        let task1 = { Task<Value1, Error1>(value: .Default).on(success: { _ in flow.append(1) }) }
+        let task2 = { Task<Value2, Error2>(error: .Default).on(success: { _ in flow.append(2) }) }
+        let task3 = { Task<Value3, Error3>(value: .Default).on(success: { _ in flow.append(3) }) }
 
         task1()._mapError(WrappedError.ByTask1)
             .success { _ in
@@ -123,13 +123,13 @@ class MultipleTasksTests: _TestCase
         
         var flow = [Int]()
         
-        let task1 = { Task<(), Value1, Error1>(value: .Default).on(success: { _ in flow.append(1) }) }
+        let task1 = { Task<Value1, Error1>(value: .Default).on(success: { _ in flow.append(1) }) }
         let wrapped1 = wrappedErrorTask(task1, f: WrappedError.ByTask1)
         
-        let task2 = { Task<(), Value2, Error2>(error: .Default).on(success: { _ in flow.append(2) }) }
+        let task2 = { Task<Value2, Error2>(error: .Default).on(success: { _ in flow.append(2) }) }
         let wrapped2 = wrappedErrorTask(task2, f: WrappedError.ByTask2)
         
-        let task3 = { Task<(), Value3, Error3>(value: .Default).on(success: { _ in flow.append(3) }) }
+        let task3 = { Task<Value3, Error3>(value: .Default).on(success: { _ in flow.append(3) }) }
         let wrapped3 = wrappedErrorTask(task3, f: WrappedError.ByTask3)
         
         XCTAssertEqual(flow, [])
@@ -158,21 +158,21 @@ class MultipleTasksTests: _TestCase
 extension Task
 {
     /// Converts `Task<..., Error>` to `Task<..., WrappedError>`.
-    fileprivate func _mapError(_ f: @escaping (Error) -> WrappedError) -> Task<Progress, Value, WrappedError>
+    fileprivate func _mapError(_ f: @escaping (Error) -> WrappedError) -> Task<Value, WrappedError>
     {
-        return self.failure { error, isCancelled -> Task<Progress, Value, WrappedError> in
+        return self.failure { error, isCancelled -> Task<Value, WrappedError> in
             if let error = error {
-                return Task<Progress, Value, WrappedError>(error: f(error))
+                return Task<Value, WrappedError>(error: f(error))
             }
             else {
                 // converts external cancellation -> internal rejection
-                return Task<Progress, Value, WrappedError>(error: .Cancelled)
+                return Task<Value, WrappedError>(error: .Cancelled)
             }
         }
     }
 }
 
-private func wrappedErrorTask<P,V,E>(_ task: @escaping () -> Task<P,V,E>, f: @escaping (E) -> WrappedError) -> () -> Task<P,V,WrappedError> {
+private func wrappedErrorTask<V,E>(_ task: @escaping () -> Task<V,E>, f: @escaping (E) -> WrappedError) -> () -> Task<V,WrappedError> {
     return {
         task()._mapError(f)
     }

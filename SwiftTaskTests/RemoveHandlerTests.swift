@@ -6,52 +6,21 @@
 //  Copyright (c) 2015年 Yasuhiro Inami. All rights reserved.
 //
 
-import SwiftTask
+@testable import SwiftTask
 import Async
 import XCTest
 
 class RemoveHandlerTests: _TestCase
 {
-    func testRemoveProgress()
-    {
-        typealias Task = SwiftTask.Task<Float, String, ErrorString>
-        
-        let expect = self.expectation(description: #function)
-        
-        var canceller: AutoCanceller? = nil
-        
-        // define task
-        Task { progress, fulfill, reject, configure in
-            progress(0.0)
-            Async.main(after: 0.1) {
-                progress(1.0)
-                fulfill("OK")
-            }
-        }.then { value, errorInfo -> Void in
-            
-            XCTAssertTrue(value == "OK")
-            XCTAssertTrue(errorInfo == nil)
-            expect.fulfill()
-                
-        }
-        
-        XCTAssertTrue(canceller != nil, "Async `task` will return non-nil `progressToken`.")
-        
-        // remove progress-handler
-        canceller = nil
-        
-        self.wait()
-    }
-    
     func testRemoveThen()
     {
-        typealias Task = SwiftTask.Task<Float, String, ErrorString>
+        typealias Task = SwiftTask.Task<String, ErrorString>
 
         let expect = self.expectation(description: #function)
         var canceller: AutoCanceller? = nil
         
         // define task
-        Task { progress, fulfill, reject, configure in
+        Task { fulfill, reject, configure in
             
             Async.main(after: 0.1) {
                 fulfill("OK")

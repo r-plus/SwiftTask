@@ -8,7 +8,7 @@
 
 import SwiftTask
 //import Async
-typealias _InterruptableTask = Task<Int, String, String>
+typealias _InterruptableTask = Task<String, String>
 
 /// 1. Invokes `progressCount/2` progresses at t=0.2
 /// 2. Checks cancel & pause at t=0.4
@@ -16,7 +16,7 @@ typealias _InterruptableTask = Task<Int, String, String>
 /// 4. Either fulfills with "OK" or rejects with "ERROR" at t=0.4~ (if not paused)
 func _interruptableTask(progressCount: Int, finalState: TaskState = .Fulfilled) -> _InterruptableTask
 {
-    return _InterruptableTask { progress, fulfill, reject, configure in
+    return _InterruptableTask { fulfill, reject, configure in
         
         // NOTE: not a good flag, watch out for race condition!
         var isCancelled = false
@@ -26,11 +26,6 @@ func _interruptableTask(progressCount: Int, finalState: TaskState = .Fulfilled) 
         DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 0.2) {
 //        Async.background(after: 0.2) {
         
-            for p in 1...progressCount/2 {
-                DispatchQueue.main.async { progress(p) }
-//                Async.main { progress(p) }
-            }
-            
             // 2nd delay (t=0.4)
             DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 0.2) {
 //            Async.background(after: 0.2) {
@@ -41,10 +36,6 @@ func _interruptableTask(progressCount: Int, finalState: TaskState = .Fulfilled) 
                 while isPaused {
                     print("pausing...")
                     Thread.sleep(forTimeInterval: 0.1)
-                }
-                
-                for p in progressCount/2+1...progressCount {
-                    DispatchQueue.main.async { progress(p) }
                 }
                 
                 DispatchQueue.main.async {

@@ -6,7 +6,7 @@
 //  Copyright (c) 2015年 Yasuhiro Inami. All rights reserved.
 //
 
-import SwiftTask
+@testable import SwiftTask
 import Async
 import XCTest
 
@@ -20,15 +20,15 @@ class MultipleErrorTypesTests: _TestCase
     
     struct Dummy {}
     
-    typealias Task1 = Task<String, String, String>
-    typealias Task2 = Task<MyEnum, MyEnum, MyEnum>
+    typealias Task1 = Task<String, String>
+    typealias Task2 = Task<MyEnum, MyEnum>
     
     var flow = [Int]()
     
     // delayed task + counting flow 1 & 2
     func _task1(ok: Bool) -> Task1
     {
-        return Task1 { progress, fulfill, reject, configure in
+        return Task1 { fulfill, reject, configure in
             print("[task1] start")
             self.flow += [1]
             
@@ -45,7 +45,7 @@ class MultipleErrorTypesTests: _TestCase
     // delayed task + counting flow 4 & 5
     func _task2(ok: Bool) -> Task2
     {
-        return Task2 { progress, fulfill, reject, configure in
+        return Task2 { fulfill, reject, configure in
             print("[task2] start")
             self.flow += [4]
             
@@ -154,7 +154,7 @@ class MultipleErrorTypesTests: _TestCase
         let expect = self.expectation(description: #function)
         
         self._task1(ok: true)
-            .success { value -> Task<Void, MyEnum, String> in
+            .success { value -> Task<MyEnum, String> in
                 
                 print("task1.success")
                 self.flow += [3]
@@ -166,7 +166,7 @@ class MultipleErrorTypesTests: _TestCase
                 // it is **user's responsibility** to add conversion logic to maintain same Error type throughout task-flow.
                 //
                 return self._task2(ok: false)
-                    .failure { Task<Void, MyEnum, String>(error: "Mapping errorInfo=\($0.error!) to String") }  // error-conversion
+                    .failure { Task<MyEnum, String>(error: "Mapping errorInfo=\($0.error!) to String") }  // error-conversion
                 
             }
             .then { value, errorInfo -> Void in
@@ -194,7 +194,7 @@ class MultipleErrorTypesTests: _TestCase
         let expect = self.expectation(description: #function)
         
         self._task1(ok: false)
-            .failure { errorInfo -> Task<Dummy, String /* must be task1's value type to recover */, Dummy> in
+            .failure { errorInfo -> Task<String /* must be task1's value type to recover */, Dummy> in
                 
                 print("task1.failure")
                 self.flow += [3]
@@ -205,7 +205,7 @@ class MultipleErrorTypesTests: _TestCase
                 // so use `then()` to promote `Task2` to `Task<..., Task1.Value, ...>`.
                 //
                 return self._task2(ok: false).then { value, errorInfo in
-                    return Task<Dummy, String, Dummy>(error: Dummy())  // error task
+                    return Task<String, Dummy>(error: Dummy())  // error task
                 }
             }
             .failure { errorInfo -> String /* must be task1's value type to recover */ in

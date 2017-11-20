@@ -6,14 +6,14 @@
 //  Copyright (c) 2014年 Yasuhiro Inami. All rights reserved.
 //
 
-import SwiftTask
+@testable import SwiftTask
 import XCTest
 
 class TypeInferenceTests: _TestCase
 {
     func testTypeInference()
     {
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             fulfill("OK")
         }.success { value -> [String] in    // NOTE: although explicitly adding closure-returning type is required, closure-argument type can be omitted
             return ["Looks", "good", "to", "me"]

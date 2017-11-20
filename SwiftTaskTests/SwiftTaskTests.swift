@@ -6,7 +6,7 @@
 //  Copyright (c) 2014年 Yasuhiro Inami. All rights reserved.
 //
 
-import SwiftTask
+@testable import SwiftTask
 import Async
 import XCTest
 
@@ -30,7 +30,7 @@ class SwiftTaskTests: _TestCase
         // NOTE: this is non-async test
         if self.isAsync { return }
         
-        Task<Float, String, ErrorString>(value: "OK").success { value -> Void in
+        Task<String, ErrorString>(value: "OK").success { value -> Void in
             XCTAssertEqual(value, "OK")
         }
     }
@@ -40,7 +40,7 @@ class SwiftTaskTests: _TestCase
         // NOTE: this is non-async test
         if self.isAsync { return }
         
-        Task<Float, String, ErrorString>(error: "ERROR").failure { error, isCancelled -> String in
+        Task<String, ErrorString>(error: "ERROR").failure { error, isCancelled -> String in
             
             XCTAssertEqual(error!, "ERROR")
             return "RECOVERY"
@@ -54,7 +54,7 @@ class SwiftTaskTests: _TestCase
         // NOTE: this is non-async test
         if self.isAsync { return }
         
-        Task<Any, String, ErrorString> { fulfill, reject in
+        Task<String, ErrorString> { fulfill, reject in
             
             fulfill("OK")
             return
@@ -72,7 +72,7 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 fulfill("OK")
@@ -92,7 +92,7 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 fulfill("OK")
@@ -116,7 +116,7 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 fulfill("OK")
@@ -142,17 +142,17 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 fulfill("OK")
             }
             
-        }.success { value -> Task<Float, String, ErrorString> in
+        }.success { value -> Task<String, ErrorString> in
             
             XCTAssertEqual(value, "OK")
             
-            return Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+            return Task<String, ErrorString> { fulfill, reject, configure in
                 
                 self.perform {
                     fulfill("OK2")
@@ -174,17 +174,17 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 fulfill("OK")
             }
             
-        }.success { value -> Task<Float, String, ErrorString> in
+        }.success { value -> Task<String, ErrorString> in
             
             XCTAssertEqual(value, "OK")
             
-            return Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+            return Task<String, ErrorString> { fulfill, reject, configure in
                 
                 self.perform {
                     reject("ERROR")
@@ -210,11 +210,11 @@ class SwiftTaskTests: _TestCase
     
     func testFulfill_then()
     {
-        typealias Task = SwiftTask.Task<Float, String, ErrorString>
+        typealias Task = SwiftTask.Task<String, ErrorString>
         
         let expect = self.expectation(description: #function)
         
-        Task { progress, fulfill, reject, configure in
+        Task { fulfill, reject, configure in
             
             self.perform {
                 fulfill("OK")
@@ -246,7 +246,7 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, Void, ErrorString> { progress, fulfill, reject, configure in
+        Task<Void, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 reject("ERROR")
@@ -268,7 +268,7 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 reject("ERROR")
@@ -294,7 +294,7 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 reject("ERROR")
@@ -322,18 +322,18 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 reject("ERROR")
             }
             
-        }.failure { error, isCancelled -> Task<Float, String, ErrorString> in
+        }.failure { error, isCancelled -> Task<String, ErrorString> in
             
             XCTAssertEqual(error!, "ERROR")
             XCTAssertFalse(isCancelled)
             
-            return Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+            return Task<String, ErrorString> { fulfill, reject, configure in
                 
                 self.perform {
                     fulfill("RECOVERY")
@@ -355,18 +355,18 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 reject("ERROR")
             }
             
-        }.failure { error, isCancelled -> Task<Float, String, ErrorString> in
+        }.failure { error, isCancelled -> Task<String, ErrorString> in
             
             XCTAssertEqual(error!, "ERROR")
             XCTAssertFalse(isCancelled)
             
-            return Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+            return Task<String, ErrorString> { fulfill, reject, configure in
                 
                 self.perform {
                     reject("ERROR2")
@@ -392,11 +392,11 @@ class SwiftTaskTests: _TestCase
     
     func testReject_then()
     {
-        typealias Task = SwiftTask.Task<Float, String, ErrorString>
+        typealias Task = SwiftTask.Task<String, ErrorString>
         
         let expect = self.expectation(description: #function)
         
-        Task { progress, fulfill, reject, configure in
+        Task { fulfill, reject, configure in
             
             self.perform {
                 reject("ERROR")
@@ -430,7 +430,7 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<(), String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 fulfill("OK")
@@ -452,7 +452,7 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        Task<(), String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 reject("NG")
@@ -472,146 +472,7 @@ class SwiftTaskTests: _TestCase
         
         self.wait()
     }
-    
-    //--------------------------------------------------
-    // MARK: - Progress
-    //--------------------------------------------------
-    
-//    func testProgress()
-//    {
-//        let expect = self.expectation(description: #function)
-//        var progressCount = 0
-//
-//        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
-//
-//            self.perform {
-//                progress(0.5)
-//                progress(1.0)
-//                fulfill("OK")
-//            }
-//
-//        }.progress { oldProgress, newProgress in
-//
-//            progressCount += 1
-//
-//            if self.isAsync {
-//                // 0.0 <= progress <= 1.0
-//                XCTAssertTrue(newProgress >= 0)
-//                XCTAssertTrue(newProgress <= 1)
-//
-//                // 1 <= progressCount <= 2
-//                XCTAssertGreaterThanOrEqual(progressCount, 1)
-//                XCTAssertLessThanOrEqual(progressCount, 2)
-//            }
-//            else {
-//                XCTFail("When isAsync=false, 1st task closure is already performed before registering this progress closure, so this closure should not be reached.")
-//            }
-//
-//        }.success { (value: String) -> Void in
-//
-//            XCTAssertEqual(value, "OK")
-//
-//            if self.isAsync {
-//                XCTAssertEqual(progressCount, 2)
-//            }
-//            else {
-//                XCTAssertLessThanOrEqual(progressCount, 0, "progressCount should be 0 because progress closure should not be invoked when isAsync=false")
-//            }
-//
-//            expect.fulfill()
-//
-//        }
-//
-//        self.wait()
-//    }
-//
-//    func testProgress_innerTask_then()
-//    {
-//        // NOTE: this is async test
-//        if !self.isAsync { return }
-//
-//        let expect = self.expectation(description: #function)
-//        var progressCount = 0
-//
-//        let task = _interruptableTask(progressCount: 5)    // 1st async task (5 progresses)
-//
-//        // chain async-task with then
-//        let task3 = task.then { _ -> _InterruptableTask in
-//            let task2 = _interruptableTask(progressCount: 7)    // 2st async task (7 progresses)
-//            return task2
-//        }
-//
-//        task3.progress { progressValues in
-//            progressCount += 1
-//            print(progressValues)
-//            return
-//        }.success { value -> Void in
-//            XCTAssertEqual(value, "OK")
-//            XCTAssertEqual(progressCount, 7, "`task3` should receive progress only from `task2` but not from `task`.")
-//            expect.fulfill()
-//        }
-//
-//        self.wait()
-//    }
-//
-//    func testProgress_innerTask_success()
-//    {
-//        // NOTE: this is async test
-//        if !self.isAsync { return }
-//
-//        let expect = self.expectation(description: #function)
-//        var progressCount = 0
-//
-//        let task = _interruptableTask(progressCount: 5)    // 1st async task (5 progresses)
-//
-//        // chain async-task with success
-//        let task3 = task.success { _ -> _InterruptableTask in
-//            let task2 = _interruptableTask(progressCount: 7)    // 2st async task (7 progresses)
-//            return task2
-//        }
-//
-//        task3.progress { progressValues in
-//            progressCount += 1
-//            print(progressValues)
-//            return
-//        }.success { value -> Void in
-//            XCTAssertEqual(value, "OK")
-//            XCTAssertEqual(progressCount, 7, "`task3` should receive progress only from `task2` but not from `task`.")
-//            expect.fulfill()
-//        }
-//
-//        self.wait()
-//    }
-//
-//    func testProgress_innerTask_failure()
-//    {
-//        // NOTE: this is async test
-//        if !self.isAsync { return }
-//
-//        let expect = self.expectation(description: #function)
-//        var progressCount = 0
-//
-//        let task = _interruptableTask(progressCount: 5, finalState: .Rejected)  // 1st async task (5 progresses -> rejected)
-//
-//        // chain async-task with failure
-//        let task3 = task.failure { _ -> _InterruptableTask in
-//            let task2 = _interruptableTask(progressCount: 7)    // 2st async task (7 progresses)
-//            return task2
-//        }
-//
-//        task3.progress { progressValues in
-//            progressCount += 1
-//            print(progressValues)
-//            return
-//        }.success { value -> Void in
-//            XCTAssertEqual(value, "OK")
-//            XCTAssertEqual(progressCount, 7, "`task3` should receive progress only from `task2` but not from `task`.")
-//            expect.fulfill()
-//        }
-//
-//        self.wait()
-//    }
-    
+
     //--------------------------------------------------
     // MARK: - Cancel
     //--------------------------------------------------
@@ -731,14 +592,12 @@ class SwiftTaskTests: _TestCase
             task.pause()
             
             XCTAssertEqual(task.state, TaskState.Paused)
-            XCTAssertTrue(task.progress! == 2, "`task` should be progressed halfway.")
-            
+
             // resume at t=0.6
             Async.main(after: 0.3) {
                 
                 XCTAssertEqual(task.state, TaskState.Paused)
-                XCTAssertTrue(task.progress! == 2, "`task` should pause progressing.")
-                
+
                 task.resume()
                 
                 XCTAssertEqual(task.state, TaskState.Running, "`task` should start running again.")
@@ -777,20 +636,17 @@ class SwiftTaskTests: _TestCase
             task2.pause()
             
             XCTAssertEqual(task2.state, TaskState.Paused)
-            XCTAssertNil(task2.progress, "`task2.progress` should be nil because `innerTask.progress()` has not been invoked yet.")
-            
+
             XCTAssertNil(innerTask, "`innerTask` should NOT be created yet.")
             
             XCTAssertEqual(task.state, TaskState.Running, "`task` should NOT be paused.")
-            XCTAssertTrue(task.progress! == 2, "`task` should be halfway progressed.")
             XCTAssertNil(task.value, "`task` should NOT be fulfilled yet.")
             
             // resume at t=0.6
             Async.main(after: 0.3) {
                 
                 XCTAssertEqual(task2.state, TaskState.Paused)
-                XCTAssertNil(task2.progress, "`task2.progress` should still be nil.")
-                
+
                 XCTAssertNotNil(innerTask, "`innerTask` should be created at this point.")
                 XCTAssertEqual(innerTask!.state, task2.state, "`innerTask!.state` should be same as `task2.state`.")
                 
@@ -828,7 +684,7 @@ class SwiftTaskTests: _TestCase
         let fulfilledTryCount = 2
         var actualTryCount = 0
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 
@@ -869,7 +725,7 @@ class SwiftTaskTests: _TestCase
         let maxTryCount = 3
         var actualTryCount = 0
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 actualTryCount += 1
@@ -901,7 +757,7 @@ class SwiftTaskTests: _TestCase
         let maxTryCount = 4
         var actualTryCount = 0
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 actualTryCount += 1
@@ -937,12 +793,11 @@ class SwiftTaskTests: _TestCase
         var actualTryCount = 0
 //        var progressCount = 0
         
-        Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        Task<String, ErrorString> { fulfill, reject, configure in
             
             self.perform {
                 
-                progress(1.0)
-                
+
                 actualTryCount += 1
                 
                 if actualTryCount < maxTryCount {
@@ -983,7 +838,7 @@ class SwiftTaskTests: _TestCase
         let maxTryCount = 5
         var actualTryCount = 0
         
-        let retryableTask = Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        let retryableTask = Task<String, ErrorString> { fulfill, reject, configure in
             
             actualTryCount += 1
             print("trying \(actualTryCount)")
@@ -1048,7 +903,7 @@ class SwiftTaskTests: _TestCase
         let maxTryCount = 3
         var actualTryCount = 0
         
-        let task = Task<Float, String, ErrorString> { progress, fulfill, reject, configure in
+        let task = Task<String, ErrorString> { fulfill, reject, configure in
             
             Async.main(after: 0.3) {
                 
@@ -1105,13 +960,45 @@ class SwiftTaskTests: _TestCase
     // MARK: - All
     //--------------------------------------------------
     
+    func testAll_concurrency() {
+        let expect = self.expectation(description: #function)
+        let values = [1, 2, 3, 4]
+        let waits = [4, 3, 2, 2]
+        var r = [Int]()
+        let serial = DispatchQueue(label: "lock")
+        let tasks = zip(values, waits).map { arg -> Task<Int, Void> in
+            let v = arg.0
+            let w = Double(arg.1)
+            return Task<Int, Void>(paused: true) { fulfill, reject, configure in
+                DispatchQueue.global().asyncAfter(deadline: .now() + w) {
+                    serial.sync {
+                        r.append(v)
+                    }
+                    fulfill(v)
+                }
+            }
+        }
+
+        // 1: wait 4 -----> -----> -----> fulfill
+        // 2: wait 3 -----> -----> fulfill
+        // 3:                      wait: 2 -----> fulfill
+        // 4:                             wait: 2 -----> fulfill
+        Task<Int, Void>.all(tasks, concurrency: 2).success { (results) -> Void in
+            XCTAssertEqual(results, values)
+            XCTAssertEqual(r, [2, 1, 3, 4])
+            expect.fulfill()
+        }
+        
+        self.wait(7)
+    }
+    
     /// all fulfilled test
     func testAll_success()
     {
         // NOTE: this is async test
         if !self.isAsync { return }
         
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
+        typealias Task = SwiftTask.Task<String, ErrorString>
         
         let expect = self.expectation(description: #function)
         var tasks: [Task] = Array()
@@ -1119,15 +1006,13 @@ class SwiftTaskTests: _TestCase
         for i in 0..<10 {
             
             // define task
-            let task = Task { progress, fulfill, reject, configure in
+            let task = Task { fulfill, reject, configure in
                 
                 Async.background(after: 0.1) {
-                    Async.main { progress(0.1) }
                     return
                 }
                 
                 Async.background(after: 0.2) {
-                    progress(1.0)
                     Async.main { fulfill("OK \(i)") }
                 }
                 
@@ -1170,14 +1055,14 @@ class SwiftTaskTests: _TestCase
         // NOTE: this is async test
         if !self.isAsync { return }
         
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
+        typealias Task = SwiftTask.Task<String, ErrorString>
         
         let expect = self.expectation(description: #function)
         var tasks: [Task] = Array()
         
         for i in 0..<5 {
             // define fulfilling task
-            let task = Task { progress, fulfill, reject, configure in
+            let task = Task { fulfill, reject, configure in
                 Async.background(after: 0.1) {
                     Async.main { fulfill("OK \(i)") }
                     return
@@ -1189,7 +1074,7 @@ class SwiftTaskTests: _TestCase
         
         for _ in 0..<5 {
             // define rejecting task
-            let task = Task { progress, fulfill, reject, configure in
+            let task = Task { fulfill, reject, configure in
                 Async.background(after: 0.1) {
                     Async.main { reject("ERROR") }
                     return
@@ -1218,7 +1103,7 @@ class SwiftTaskTests: _TestCase
         // NOTE: this is async test
         if !self.isAsync { return }
         
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
+        typealias Task = SwiftTask.Task<String, ErrorString>
         
         let expect = self.expectation(description: #function)
         var tasks: [Task] = Array()
@@ -1226,7 +1111,7 @@ class SwiftTaskTests: _TestCase
         for i in 0..<10 {
             
             // define task
-            let task = Task { progress, fulfill, reject, configure in
+            let task = Task { fulfill, reject, configure in
                 
                 var isCancelled = false
                 
@@ -1275,7 +1160,7 @@ class SwiftTaskTests: _TestCase
         // NOTE: this is async test
         if !self.isAsync { return }
         
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
+        typealias Task = SwiftTask.Task<String, ErrorString>
         
         let expect = self.expectation(description: #function)
         var tasks: [Task] = Array()
@@ -1283,7 +1168,7 @@ class SwiftTaskTests: _TestCase
         for i in 0..<10 {
             
             // define task
-            let task = Task { progress, fulfill, reject, configure in
+            let task = Task { fulfill, reject, configure in
                 
                 var isPaused = false
                 
@@ -1337,269 +1222,4 @@ class SwiftTaskTests: _TestCase
         self.wait()
     }
     
-    //--------------------------------------------------
-    // MARK: - Any
-    //--------------------------------------------------
-    
-    /// any fulfilled test
-    func testAny_success()
-    {
-        // NOTE: this is async test
-        if !self.isAsync { return }
-        
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
-        
-        let expect = self.expectation(description: #function)
-        var tasks: [Task] = Array()
-        
-        for i in 0..<10 {
-            
-            // define task
-            let task = Task { progress, fulfill, reject, configure in
-                
-                Async.background(after: 0.1) {
-                    Async.main {
-                        if i == 5 {
-                            fulfill("OK \(i)")
-                        }
-                        else {
-                            reject("Failed \(i)")
-                        }
-                    }
-                    return
-                }
-                return
-                
-            }
-            
-            tasks.append(task)
-        }
-        
-        Task.any(tasks).success { value -> Void in
-                
-            XCTAssertEqual(value, "OK 5")
-            
-            expect.fulfill()
-                
-        }
-        
-        self.wait()
-    }
-    
-    /// all rejected test
-    func testAny_failure()
-    {
-        // NOTE: this is async test
-        if !self.isAsync { return }
-        
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
-        
-        let expect = self.expectation(description: #function)
-        var tasks: [Task] = Array()
-        
-        for i in 0..<10 {
-            
-            // define task
-            let task = Task { progress, fulfill, reject, configure in
-                
-                Async.background(after: 0.1) {
-                    Async.main { reject("Failed \(i)") }
-                    return
-                }
-                return
-                
-            }
-            
-            tasks.append(task)
-        }
-        
-        Task.any(tasks).success { value -> Void in
-            
-            XCTFail("Should never reach here.")
-            
-        }.failure { error, isCancelled -> Void in
-            
-            XCTAssertTrue(error == nil, "Task.any non-cancelled error returns nil (spec).")
-            XCTAssertFalse(isCancelled)
-            expect.fulfill()
-            
-        }
-        
-        self.wait()
-    }
-    
-    func testAny_cancel()
-    {
-        // NOTE: this is async test
-        if !self.isAsync { return }
-        
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
-        
-        let expect = self.expectation(description: #function)
-        var tasks: [Task] = Array()
-        
-        for i in 0..<10 {
-            
-            // define task
-            let task = Task { progress, fulfill, reject, configure in
-                
-                var isCancelled = false
-                
-                Async.background(after: SAFE_BG_FLAG_CHECK_DELAY) {
-                    if isCancelled {
-                        return
-                    }
-                    Async.main { fulfill("OK \(i)") }
-                }
-                
-                configure.cancel = {
-                    isCancelled = true
-                    return
-                }
-                
-            }
-            
-            tasks.append(task)
-        }
-        
-        let groupedTask = Task.any(tasks)
-        
-        groupedTask.success { value -> Void in
-            
-            XCTFail("Should never reach here.")
-            
-        }.failure { error, isCancelled -> Void in
-            
-            XCTAssertEqual(error!, "Cancel")
-            XCTAssertTrue(isCancelled)
-            expect.fulfill()
-                
-        }
-        
-        // cancel before fulfilled
-        self.perform {
-            groupedTask.cancel(error: "Cancel")
-            return
-        }
-        
-        self.wait()
-    }
-    
-    func testAny_pauseResume()
-    {
-        // NOTE: this is async test
-        if !self.isAsync { return }
-        
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
-        
-        let expect = self.expectation(description: #function)
-        var tasks: [Task] = Array()
-        
-        for i in 0..<10 {
-            
-            // define task
-            let task = Task { progress, fulfill, reject, configure in
-                
-                var isPaused = false
-                
-                Async.background(after: SAFE_BG_FLAG_CHECK_DELAY) {
-                    while isPaused {
-                        Thread.sleep(forTimeInterval: 0.1)
-                    }
-
-                    Async.main { fulfill("OK \(i)") }
-                }
-                
-                configure.pause = {
-                    isPaused = true
-                    return
-                }
-                configure.resume = {
-                    isPaused = false
-                    return
-                }
-                
-            }
-            
-            tasks.append(task)
-        }
-        
-        let groupedTask = Task.any(tasks)
-        
-        groupedTask.success { value -> Void in
-            
-            XCTAssertTrue(value.hasPrefix("OK"))
-            expect.fulfill()
-            
-        }
-        
-        // pause & resume
-        self.perform {
-            
-            groupedTask.pause()
-            XCTAssertEqual(groupedTask.state, TaskState.Paused)
-            
-            Async.main(after: SAFE_BG_FLAG_CHECK_DELAY+0.2) {
-                
-                groupedTask.resume()
-                XCTAssertEqual(groupedTask.state, TaskState.Running)
-                
-            }
-        }
-        
-        self.wait()
-    }
-    
-    //--------------------------------------------------
-    // MARK: - Some
-    //--------------------------------------------------
-    
-    /// some fulfilled test
-    func testSome_success()
-    {
-        // NOTE: this is async test
-        if !self.isAsync { return }
-        
-        typealias Task = SwiftTask.Task<Any, String, ErrorString>
-        
-        let expect = self.expectation(description: #function)
-        var tasks: [Task] = Array()
-        
-        for i in 0..<10 {
-            
-            // define task
-            let task = Task { progress, fulfill, reject, configure in
-                
-                Async.main(after: 0.1) {
-                    
-                    if i == 3 || i == 5 {
-                        fulfill("OK \(i)")
-                    }
-                    else {
-                        reject("Failed \(i)")
-                    }
-                }
-                return
-                
-            }
-            
-            tasks.append(task)
-        }
-        
-        Task.some(tasks).success { values -> Void in
-            
-            XCTAssertEqual(values.count, 2)
-            XCTAssertEqual(values[0], "OK 3")
-            XCTAssertEqual(values[1], "OK 5")
-            
-            expect.fulfill()
-            
-        }.failure { error, isCancelled -> Void in
-            
-            XCTFail("Should never reach here because Task.some() will never reject internally.")
-            
-        }
-        
-        self.wait()
-    }
 }

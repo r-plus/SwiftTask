@@ -46,7 +46,7 @@ class Player
 
 class RetainCycleTests: _TestCase
 {
-    typealias Task = SwiftTask.Task<Float, String, ErrorString>
+    typealias Task = SwiftTask.Task<String, ErrorString>
     
     // weak properties for inspection
     weak var task: Task?
@@ -66,7 +66,7 @@ class RetainCycleTests: _TestCase
         // 2. dispatch_queue x-> player
         // dispatch_queue (via player impl) x-> player (via completion capturing)
         //
-        self.task = Task { progress, fulfill, reject, configure in
+        self.task = Task { fulfill, reject, configure in
             
             let player = Player()
             self.player = player
@@ -113,7 +113,7 @@ class RetainCycleTests: _TestCase
         // 3. task -> player
         // task -> task.machine -> configure (via pause/resume addEventHandler) -> configure.cancel -> player
         //
-        self.task = Task { progress, fulfill, reject, configure in
+        self.task = Task { fulfill, reject, configure in
             
             let player = Player()
             self.player = player
@@ -153,7 +153,7 @@ class RetainCycleTests: _TestCase
         // 1. dispatch_queue x-> player -> task
         // dispatch_queue (via player impl) x-> player -> player.completionHandler -> fulfill -> task
         //
-        self.task = Task { progress, fulfill, reject, configure in
+        self.task = Task { fulfill, reject, configure in
             
             let player = Player()
             self.player = player
@@ -198,7 +198,7 @@ class RetainCycleTests: _TestCase
         // 2. task x-> player
         // task -> task.machine -> configure (via pause/resume addEventHandler) -> configure.pause/resume/cancel x-> player
         //
-        self.task = Task { progress, fulfill, reject, configure in
+        self.task = Task { fulfill, reject, configure in
             
             let player = Player()
             self.player = player
