@@ -313,6 +313,9 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
 //            let task = self.progress { _, progressValue in
 //                progress(progressValue)
             let task = self.failure { [unowned self] errorInfo -> Task in
+                guard !errorInfo.isCancelled else {
+                    return Task(_errorInfo: errorInfo)
+                }
                 if condition(errorInfo) {
                     return self.clone().retry(maxRetryCount-1, condition: condition) // clone & try recursively
                 }
