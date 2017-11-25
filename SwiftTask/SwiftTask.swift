@@ -30,6 +30,9 @@ public class TaskConfiguration
     public var pause: (() -> Void)?
     public var resume: (() -> Void)?
     public var cancel: (() -> Void)?
+    #if DEBUG
+    public var isChained = false
+    #endif
     
     /// useful to terminate immediate-infinite-sequence while performing `initClosure`
     public var isFinished : Bool
@@ -306,6 +309,9 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     /// - Parameter condition: Predicate that will be evaluated on each retry timing.
     public func retry(_ maxRetryCount: Int, condition: @escaping ((ErrorInfo) -> Bool) = { _ in true }) -> Task
     {
+        #if DEBUG
+            assert(!self._machine.configuration.isChained, "Don't retry chained task.")
+        #endif
         guard maxRetryCount > 0 else { return self }
         
         return Task { machine, fulfill, _reject, configure in
@@ -468,6 +474,10 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         var localCanceller = canceller; defer { canceller = localCanceller }
         return Task<Value2, Error> { [unowned self] newMachine, fulfill, _reject, configure in
             
+            #if DEBUG
+                configure.isChained = true
+            #endif
+            
             let selfMachine = self._machine
             
             // NOTE: using `self._then()` + `selfMachine` instead of `self.then()` will reduce Task allocation
@@ -525,6 +535,10 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     {
         var localCanceller = canceller; defer { canceller = localCanceller }
         return Task<Value, Error2> { [unowned self] newMachine, fulfill, _reject, configure in
+            
+            #if DEBUG
+                configure.isChained = true
+            #endif
             
             let selfMachine = self._machine
             
