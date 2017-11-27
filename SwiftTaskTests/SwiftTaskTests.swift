@@ -730,6 +730,7 @@ class SwiftTaskTests: _TestCase
             self.perform {
                 
                 actualTryCount += 1
+                XCTAssertEqual(actualTryCount, configure.retryCount+1)
                 
                 if actualTryCount != fulfilledTryCount {
                     reject("ERROR \(actualTryCount)")
@@ -770,6 +771,7 @@ class SwiftTaskTests: _TestCase
             
             self.perform {
                 actualTryCount += 1
+                XCTAssertEqual(actualTryCount, configure.retryCount+1)
                 reject("ERROR \(actualTryCount)")
             }
             
@@ -802,6 +804,7 @@ class SwiftTaskTests: _TestCase
             
             self.perform {
                 actualTryCount += 1
+                XCTAssertEqual(actualTryCount, configure.retryCount+1)
                 reject("ERROR \(actualTryCount)")
             }
             
@@ -840,6 +843,7 @@ class SwiftTaskTests: _TestCase
                 
 
                 actualTryCount += 1
+                XCTAssertEqual(actualTryCount, configure.retryCount+1)
                 
                 if actualTryCount < maxTryCount {
                     reject("ERROR \(actualTryCount)")
@@ -882,6 +886,7 @@ class SwiftTaskTests: _TestCase
         let retryableTask = Task<String, ErrorString> { fulfill, reject, configure in
             
             actualTryCount += 1
+            XCTAssertEqual(actualTryCount, configure.retryCount+1)
             print("trying \(actualTryCount)")
             
             var isPaused = false
@@ -913,7 +918,7 @@ class SwiftTaskTests: _TestCase
         }.retry(maxTryCount-1)
         
         retryableTask.success { value -> Void in
-            
+
             XCTAssertEqual(value, "OK")
             expect.fulfill()
             
@@ -924,7 +929,7 @@ class SwiftTaskTests: _TestCase
             retryableTask.pause()
             return
         }
-        
+
         Async.main(after: 1.5) {
             retryableTask.resume()
             return
@@ -949,6 +954,7 @@ class SwiftTaskTests: _TestCase
             Async.main(after: 0.3) {
                 
                 actualTryCount += 1
+                XCTAssertEqual(actualTryCount, configure.retryCount+1)
                 
                 if actualTryCount < maxTryCount {
                     reject("ERROR \(actualTryCount)")
@@ -995,6 +1001,48 @@ class SwiftTaskTests: _TestCase
         self.wait()
         
         XCTAssertTrue(actualTryCount < maxTryCount, "`actualTryCount` should not reach `maxTryCount` because of cancellation.")
+    }
+    
+    func testRetry_PausedTask() {
+        // NOTE: this is async test
+        if !self.isAsync { return }
+        
+        let expect = self.expectation(description: #function)
+        let maxTryCount = 3
+        var actualTryCount = 0
+        
+        let pausedRetryableTask = Task<String, ErrorString>(paused: true) { fulfill, reject, configure in
+            
+            Async.main(after: 0.3) {
+                
+                actualTryCount += 1
+                XCTAssertEqual(actualTryCount, configure.retryCount+1)
+                
+                if actualTryCount < maxTryCount {
+                    reject("ERROR \(actualTryCount)")
+                }
+                else {
+                    fulfill("OK")
+                }
+            }
+        }.retry(maxTryCount-1)
+
+        // paused is first task, retry registered task is running.
+        XCTAssertFalse(pausedRetryableTask._paused)
+        
+        pausedRetryableTask.on(success: { (value) -> Void in
+            XCTAssertEqual(value, "OK")
+            expect.fulfill()
+        })
+        // first, we must pause running retry() returned task to resume upstream first task.
+        let pause = pausedRetryableTask.pause()
+        XCTAssertTrue(pause)
+        let resumed = pausedRetryableTask.resume()
+        XCTAssertTrue(resumed)
+        
+        self.wait()
+        
+        XCTAssertEqual(actualTryCount, maxTryCount)
     }
     
     //--------------------------------------------------

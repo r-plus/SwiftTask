@@ -30,6 +30,7 @@ public class TaskConfiguration
     public var pause: (() -> Void)?
     public var resume: (() -> Void)?
     public var cancel: (() -> Void)?
+    public var retryCount = 0
     #if DEBUG
     public var isChained = false
     #endif
@@ -305,6 +306,12 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         return clonedTask
     }
     
+    private func pausedClone() -> Task {
+        let clonedTask = Task(weakified: self._weakified, paused: true, _initClosure: self._initClosure)
+        clonedTask.name = "\(self.name)-clone"
+        return clonedTask
+    }
+    
     /// Returns new task that is retryable for `maxRetryCount (= maxTryCount-1)` times.
     /// - Parameter condition: Predicate that will be evaluated on each retry timing.
     public func retry(_ maxRetryCount: Int, condition: @escaping ((ErrorInfo) -> Bool) = { _ in true }) -> Task
@@ -323,7 +330,11 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
                     return Task(_errorInfo: errorInfo)
                 }
                 if condition(errorInfo) {
-                    return self.clone().retry(maxRetryCount-1, condition: condition) // clone & try recursively
+                    // should pausedClone to correctlly count up retryCount in initClosure and support paused init task.
+                    let clone = self.pausedClone()
+                    clone._machine.configuration.retryCount = self._machine.configuration.retryCount + 1
+                    clone.resume()
+                    return clone.retry(maxRetryCount-1, condition: condition) // clone & try recursively
                 }
                 else {
                     return Task(_errorInfo: errorInfo)
