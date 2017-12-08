@@ -93,7 +93,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     /// rejected/cancelled tuple info
     public var errorInfo: ErrorInfo? { return self._machine.errorInfo.rawValue }
     
-    public var name: String = "DefaultTask"
+    public private(set) var name: String = "DefaultTask"
     
     open var description: String
     {
