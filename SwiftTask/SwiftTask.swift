@@ -681,12 +681,23 @@ internal func _bindInnerTask<Value2, Error, Error2>(
     }
 }
 
-// MARK: - Multiple Tasks
+// MARK: - all
+
+/// Task.all global function (Variadic Parameters)
+public func all<V, E>(_ tasks: Task<V, E>..., concurrency: UInt = UInt.max) -> Task<[V], E> {
+    return Task<V, E>.all(tasks, concurrency: concurrency)
+}
+
+/// Task.all global function (Sequence)
+public func all<V, E, S: Sequence>(_ tasks: S, concurrency: UInt = UInt.max) -> Task<[V], E> where S.Iterator.Element == Task<V, E> {
+    return Task<V, E>.all(tasks, concurrency: concurrency)
+}
 
 extension Task
 {
-    public class func all(_ tasks: [Task], concurrency: UInt = UInt.max) -> Task<[Value], Error>
+    public class func all<S: Sequence>(_ tasks: S, concurrency: UInt = UInt.max) -> Task<[Value], Error> where S.Iterator.Element == Task<Value, Error>
     {
+        let tasks = Array(tasks)
         guard !tasks.isEmpty else {
             return Task<[Value], Error>(value: [])
         }

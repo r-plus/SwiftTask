@@ -1072,7 +1072,7 @@ class SwiftTaskTests: _TestCase
         // 2: wait 3 -----> -----> fulfill
         // 3:                      wait: 2 -----> fulfill
         // 4:                             wait: 2 -----> fulfill
-        Task<Int, Void>.all(tasks, concurrency: 2).success { (results) -> Void in
+        all(tasks, concurrency: 2).success { (results) -> Void in
             XCTAssertEqual(results, values)
             XCTAssertEqual(r, [2, 1, 3, 4])
             expect.fulfill()
@@ -1120,7 +1120,7 @@ class SwiftTaskTests: _TestCase
             tasks.append(task)
         }
         
-        Task.all(tasks)
+        all(tasks)
 //            .progress { (oldProgress: Task.BulkProgress?, newProgress: Task.BulkProgress) in
 //            
 //            print("all progress = \(newProgress.completedCount) / \(newProgress.totalCount)")
@@ -1173,7 +1173,7 @@ class SwiftTaskTests: _TestCase
             tasks.append(task)
         }
         
-        Task.all(tasks).success { values -> Void in
+        all(tasks).success { values -> Void in
             
             XCTFail("Should never reach here because of Task.all failure.")
             
@@ -1221,7 +1221,7 @@ class SwiftTaskTests: _TestCase
             tasks.append(task)
         }
         
-        let groupedTask = Task.all(tasks)
+        let groupedTask = all(tasks)
         
         groupedTask.success { values -> Void in
             
@@ -1282,7 +1282,7 @@ class SwiftTaskTests: _TestCase
             tasks.append(task)
         }
         
-        let groupedTask = Task.all(tasks)
+        let groupedTask = all(tasks)
         
         groupedTask.success { values -> Void in
             
