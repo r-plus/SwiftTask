@@ -111,6 +111,11 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         return "<\(self.name); state=\(self.state.rawValue); \(valueString!))>"
     }
     
+    /// Value type converted to Void task that useful when multiple tasks that have different Value type pass to `all` method.
+    public var voidTask: Task<Void, Error> {
+        return self.success { (_) -> Void in }
+    }
+
     ///
     /// Create a new task.
     ///
