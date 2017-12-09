@@ -1046,6 +1046,31 @@ class SwiftTaskTests: _TestCase
     }
     
     //--------------------------------------------------
+    // MARK: - Zip
+    //--------------------------------------------------
+    
+    func testZip() {
+        let expect = self.expectation(description: #function)
+        let t1 = Task<String, Void> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
+                fulfill("1")
+            }
+        }
+        let t2 = Task<Int, Void> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                fulfill(2)
+            }
+        }
+        
+        zip(t1, t2).success { (value1, value2) -> Void in
+            XCTAssertEqual(value1, "1")
+            XCTAssertEqual(value2, 2)
+            expect.fulfill()
+        }
+        self.wait()
+    }
+    
+    //--------------------------------------------------
     // MARK: - All
     //--------------------------------------------------
     

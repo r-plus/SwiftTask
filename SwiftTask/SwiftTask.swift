@@ -787,3 +787,25 @@ extension Task
         }
     }
 }
+
+// MARK: - zip
+
+// 2
+public func zip<A, B, E>(_ a: Task<A, E>, _ b: Task<B, E>) -> Task<(A, B), E> {
+    return all(a.voidTask, b.voidTask).success { (_) -> Task<(A, B), E> in
+        return Task<(A, B), E>(value: (a.value!, b.value!))
+    }
+}
+// 3
+public func zip<A, B, C, E>(_ a: Task<A, E>, _ b: Task<B, E>, _ c: Task<C, E>) -> Task<(A, B, C), E> {
+    return all(a.voidTask, b.voidTask, c.voidTask).success { (_) -> Task<(A, B, C), E> in
+        return Task<(A, B, C), E>(value: (a.value!, b.value!, c.value!))
+    }
+}
+// 4
+public func zip<A, B, C, D, E>(_ a: Task<A, E>, _ b: Task<B, E>, _ c: Task<C, E>, _ d: Task<D, E>) -> Task<(A, B, C, D), E> {
+    return all(a.voidTask, b.voidTask, c.voidTask, d.voidTask).success { (_) -> Task<(A, B, C, D), E> in
+        return Task<(A, B, C, D), E>(value: (a.value!, b.value!, c.value!, d.value!))
+    }
+}
+
