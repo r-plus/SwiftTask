@@ -113,7 +113,11 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     
     /// Value type converted to Void task that useful when multiple tasks that have different Value type pass to `all` method.
     public var voidTask: Task<Void, Error> {
-        return self.success { (_) -> Void in }
+        // Use on(failure) method to chain Cancelled state to upstream(self).
+        return self.success { (_) -> Void in }.on(failure: { [weak self] (err, isCancelled) in
+            guard let _self = self, isCancelled else { return }
+            _self.cancel()
+        })
     }
 
     ///

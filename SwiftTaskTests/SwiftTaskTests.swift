@@ -518,6 +518,44 @@ class SwiftTaskTests: _TestCase
     // MARK: - Cancel
     //--------------------------------------------------
     
+    func testCancelVoidTask()
+    {
+        let expect = self.expectation(description: #function)
+
+        let task = Task<String, String> { (fulfill, reject, conf) in
+            // 10s
+            DispatchQueue.global().asyncAfter(deadline: .now() + 10.0) {
+                fulfill("OK")
+            }
+        }
+
+        let voidTask = task.voidTask
+        
+        let successFailureTask = voidTask.success { value -> Void in
+            XCTFail("Should never reach here because of cancellation.")
+        }.on { [unowned task] (error, isCancelled) in
+            // upstream tasks also cancelled.
+            XCTAssertEqual(task.state, TaskState.Cancelled)
+
+            expect.fulfill()
+        }
+        
+        Async.main(after: 0.1) {
+            
+            // cancel duaring first task is Running.
+            let result = voidTask.cancel(error: "I get bored.")
+            
+            XCTAssertEqual(result, true)
+            // upstream and downstream tasks are Cancelled.
+            XCTAssertEqual(task.state, TaskState.Cancelled)
+            XCTAssertEqual(voidTask.state, TaskState.Cancelled)
+            XCTAssertEqual(successFailureTask.state, TaskState.Cancelled)
+            
+        }
+        
+        self.wait()
+    }
+    
     func testCancel()
     {
         let expect = self.expectation(description: #function)
@@ -554,7 +592,7 @@ class SwiftTaskTests: _TestCase
             task.cancel(error: "I get bored.")
             
             XCTAssertEqual(task.state, TaskState.Cancelled)
-            
+
         }
         
         self.wait()
