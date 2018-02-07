@@ -1,7 +1,7 @@
 SwiftTask [![Circle CI](https://circleci.com/gh/ReactKit/SwiftTask/tree/swift%2F2.0.svg?style=svg)](https://circleci.com/gh/ReactKit/SwiftTask/tree/swift%2F2.0)
 =========
 
-[Promise](http://www.html5rocks.com/en/tutorials/es6/promises/) + progress + pause + cancel + retry for Swift.
+[Promise](http://www.html5rocks.com/en/tutorials/es6/promises/) + pause + cancel + retry for Swift.
 
 ![SwiftTask](Screenshots/diagram.png)
 
@@ -17,11 +17,9 @@ See [ReactKit Wiki page](https://github.com/ReactKit/ReactKit/wiki/How-to-instal
 
 ```swift
 // define task
-let task = Task<Float, String, NSError> { progress, fulfill, reject, configure in
+let task = Task<Float, String, NSError> { fulfill, reject, configure in
 
-    player.doSomethingWithProgress({ (progressValue: Float) in
-        progress(progressValue) // optional
-    }, completion: { (value: NSData?, error: NSError?) in
+    player.doSomething(completion: { (value: NSData?, error: NSError?) in
         if error == nil {
             fulfill("OK")
         }
@@ -58,7 +56,7 @@ task.cancel()
 
 Notice that `player` has following methods, which will work nicely with `SwiftTask`:
 
-- `doSomethingWithProgress(_:completion:)` (progress callback as optional)
+- `doSomething(completion:)`
 - `pause()` (optional)
 - `resume()` (optional)
 - `cancel()` (optional)
@@ -69,18 +67,13 @@ One of the best example would be [Alamofire](https://github.com/Alamofire/Alamof
 ### Using [Alamofire](https://github.com/Alamofire/Alamofire)
 
 ```swift
-typealias Progress = (bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64)
-typealias AlamoFireTask = Task<Progress, String, NSError>
+typealias AlamoFireTask = Task<String, NSError>
 
 // define task
-let task = AlamoFireTask { progress, fulfill, reject, configure in
+let task = AlamoFireTask { fulfill, reject, configure in
 
     Alamofire.download(.GET, "http://httpbin.org/stream/100", destination: somewhere)
-    .progress { bytesWritten, totalBytesWritten, totalBytesExpectedToWrite in
-
-        progress((bytesWritten, totalBytesWritten, totalBytesExpectedToWrite) as Progress)
-
-    }.response { request, response, data, error in
+      .response { request, response, data, error in
 
         if let error = error {
             reject(error)
@@ -94,14 +87,8 @@ let task = AlamoFireTask { progress, fulfill, reject, configure in
     return
 }
 
-// set progress & then
-task.progress { (oldProgress: Progress?, newProgress: Progress) in
-
-    println("\(newProgress.bytesWritten)")
-    println("\(newProgress.totalBytesWritten)")
-    println("\(newProgress.totalBytesExpectedToWrite)")
-
-}.then { (value: String?, errorInfo: AlamoFireTask.ErrorInfo?) -> Void in
+// set then
+task.then { (value: String?, errorInfo: AlamoFireTask.ErrorInfo?) -> Void in
     // do something with fulfilled value or rejected errorInfo
 }
 ```
@@ -115,7 +102,7 @@ This feature is extremely useful for unstable tasks e.g. network connection.
 By implementing *retryable* from `SwiftTask`'s side, similar code is no longer needed for `player` (inner logic) class.
 
 ```swift
-task.retry(2).progress { ... }.success { ...
+task.retry(2).success { ...
     // this closure will be called even when task is rejected for 1st & 2nd try
     // but finally fulfilled in 3rd try.
 }
@@ -131,7 +118,7 @@ For more examples, please see XCTest cases.
 Define your `task` inside `initClosure`.
 
 ```swift
-let task = Task<Float, NSString?, NSError> { progress, fulfill, reject, configure in
+let task = Task<Float, NSString?, NSError> { fulfill, reject, configure in
 
     player.doSomethingWithCompletion { (value: NSString?, error: NSError?) in
         if error == nil {
@@ -145,8 +132,6 @@ let task = Task<Float, NSString?, NSError> { progress, fulfill, reject, configur
 ```
 
 In order to pipeline future `task.value` or `task.errorInfo` (tuple of `(error: Error?, isCancelled: Bool)`) via `then()`/`success()`/`failure()`, you have to call `fulfill(value)` and/or `reject(error)` inside `initClosure`.
-
-Optionally, you can call `progress(progressValue)` multiple times before calling `fulfill`/`reject` to transfer `progressValue` outside of the `initClosure`, notifying it to `task` itself.
 
 To add `pause`/`resume`/`cancel` functionality to your `task`, use `configure` to wrap up the original one.
 
@@ -162,17 +147,6 @@ configure.cancel = { [weak player] in
     player?.cancel()
 }
 ```
-
-### task.progress(_ progressClosure:) -> task
-
-```swift
-task.progress { (oldProgress: Progress?, newProgress: Progress) in
-    println(newProgress)
-    return
-}.success { ... }
-```
-
-`task.progress(progressClosure)` will add `progressClosure` to observe old/new `progressValue` which is notified from inside previous `initClosure`. This method will return **same task**, so it is useful to chain with forthcoming `then`/`success`/`failure`.
 
 ### task.then(_ thenClosure:) -> newTask
 
@@ -256,7 +230,7 @@ task.success { (value: String) -> Void in
 }
 ```
 
-### task.try(_ tryCount:) -> newTask
+### task.retry(_ tryCount:) -> newTask
 
 See [Retry-able section](#retry-able).
 
@@ -266,18 +240,6 @@ See [Retry-able section](#retry-able).
 
 - fulfilled when **all tasks are fulfilled**
 - rejected when **any of the task is rejected**
-
-### Task.any(_ tasks:) -> newTask
-
-`Task.any(tasks)` is an opposite of `Task.all(tasks)` which will be:
-
-- fulfilled when **any of the task is fulfilled**
-- rejected when **all tasks are rejected**
-
-### Task.some(_ tasks:) -> newTask
-
-`Task.some(tasks)` is a new task that performs all `tasks` without internal rejection, and is fulfilled with given `tasks`'s fulfilled values. Note that this new task **will be fulfilled with empty value-array, even though all `tasks` are rejected.**
-
 
 ## Related Articles
 
