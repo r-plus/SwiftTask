@@ -28,8 +28,8 @@ internal final class _RecursiveLock
         pthread_mutexattr_destroy(self.attribute)
         pthread_mutex_destroy(self.mutex)
         
-        self.attribute.deallocate(capacity: 1)
-        self.mutex.deallocate(capacity: 1)
+        self.attribute.deallocate()
+        self.mutex.deallocate()
     }
     
     internal func lock()
