@@ -119,6 +119,13 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
             _self.cancel()
         })
     }
+    
+    /// convert to fulfilled task for `allSettled` function.
+    internal var settled: Task<Void, Error> {
+        return self.success { (value) -> Void in
+        }.failure { (err, isCancelled) -> Void in
+        }
+    }
 
     ///
     /// Create a new task.
@@ -789,6 +796,26 @@ extension Task
         for task in tasks {
             task.resume()
         }
+    }
+}
+
+// MARK: - allSettled
+
+public struct Settled<V, E> {
+    let state: TaskState
+    let value: V?
+    let errorInfo: Task<V, E>.ErrorInfo?
+}
+
+public func allSettled<V, E>(_ tasks: Task<V, E>...) -> Task<[Settled<V, E>], E> {
+    return allSettled(tasks)
+}
+
+public func allSettled<V, E, S: Sequence>(_ tasks: S) -> Task<[Settled<V, E>], E> where S.Iterator.Element == Task<V, E> {
+    return all(tasks.map { $0.settled }).success { (_) -> Task<[Settled<V, E>], E> in
+        return Task<[Settled<V, E>], E>(value: tasks.map { (task) -> Settled<V, E> in
+            Settled<V, E>(state: task.state, value: task.value, errorInfo: task.errorInfo)
+        })
     }
 }
 

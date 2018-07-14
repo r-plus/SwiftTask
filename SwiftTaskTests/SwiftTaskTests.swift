@@ -1084,6 +1084,35 @@ class SwiftTaskTests: _TestCase
     }
     
     //--------------------------------------------------
+    // MARK: - allSettled
+    //--------------------------------------------------
+    
+    func testAllSettled() {
+        let expect = self.expectation(description: #function)
+        let t1 = Task<String, Int> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
+                fulfill("1")
+            }
+        }
+        let t2 = Task<String, Int> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                reject(2)
+            }
+        }
+        
+        allSettled(t1, t2).success { (results) -> Void in
+            XCTAssertEqual(results[0].state, .Fulfilled)
+            XCTAssertEqual(results[1].state, .Rejected)
+            XCTAssertEqual(results[0].value, "1")
+            XCTAssertNil(results[1].value)
+            XCTAssertNil(results[0].errorInfo)
+            XCTAssertEqual(results[1].errorInfo?.error, 2)
+            expect.fulfill()
+        }
+        self.wait()
+    }
+    
+    //--------------------------------------------------
     // MARK: - Zip
     //--------------------------------------------------
     
