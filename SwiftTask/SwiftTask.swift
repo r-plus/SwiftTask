@@ -9,6 +9,28 @@
 // Required for use in the playground Sources folder
 import ObjectiveC
 
+public enum SwiftTaskQueue: Equatable {
+    case main
+    case userInteractive
+    case userInitiated
+    case utility
+    case background
+    case custom(queue: DispatchQueue)
+    case current
+    
+    var queue: DispatchQueue {
+        switch self {
+        case .main: return .main
+        case .userInteractive: return .global(qos: .userInteractive)
+        case .userInitiated: return .global(qos: .userInitiated)
+        case .utility: return .global(qos: .utility)
+        case .background: return .global(qos: .background)
+        case .custom(let queue): return queue
+        case .current: fatalError("use current thread serially.")
+        }
+    }
+}
+
 // NOTE: nested type inside generic Task class is not allowed in Swift 1.1
 public enum TaskState: String, CustomStringConvertible
 {
@@ -61,8 +83,16 @@ public class TaskConfiguration
     }
 }
 
+#if DEBUG
+var gcount = 0
+#endif
+
 open class Task<Value, Error>: Cancellable, CustomStringConvertible
 {
+    #if DEBUG
+    public var icount = 0
+    #endif
+    
     public typealias ErrorInfo = (error: Error?, isCancelled: Bool)
     
     public typealias FulfillHandler = (Value) -> Void
@@ -81,7 +111,6 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     internal let _machine: _Machine
     
     // store initial parameters for cloning task when using `try()`
-    internal let _weakified: Bool
     internal let _paused: Bool
     internal var _initClosure: _InitClosure!    // retained throughout task's lifetime
     
@@ -127,12 +156,12 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         }
     }
 
+    // MARK: - init
+    
     ///
     /// Create a new task.
     ///
     /// - e.g. Task<P, V, E>(weakified: false, paused: false) { progress, fulfill, reject, configure in ... }
-    ///
-    /// - Parameter weakified: Weakifies progress/fulfill/reject handlers to let player (inner asynchronous implementation inside `initClosure`) NOT CAPTURE this created new task. Normally, `weakified = false` should be set to gain "player -> task" retaining, so that task will be automatically deinited when player is deinited. If `weakified = true`, task must be manually retained somewhere else, or it will be immediately deinited.
     ///
     /// - Parameter paused: Flag to invoke `initClosure` immediately or not. If `paused = true`, task's initial state will be `.Paused` and needs to `resume()` in order to start `.Running`. If `paused = false`, `initClosure` will be invoked immediately.
     ///
@@ -140,38 +169,17 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New task.
     ///
-    public init(weakified: Bool, paused: Bool, initClosure: @escaping InitClosure)
+    public init(on queue: SwiftTaskQueue = .current, paused: Bool = false, initClosure: @escaping InitClosure)
     {
-        self._weakified = weakified
         self._paused = paused
-        self._machine = _Machine(weakified: weakified, paused: paused)
+        self._machine = _Machine(on: queue, paused: paused)
         
         let _initClosure: _InitClosure = { _, fulfill, _reject, configure in
             // NOTE: don't expose rejectHandler with ErrorInfo (isCancelled) for public init
             initClosure(fulfill, { error in _reject(ErrorInfo(error: Optional(error), isCancelled: false)) }, configure)
         }
         
-        self.setup(weakified: weakified, paused: paused, _initClosure: _initClosure)
-    }
-    
-    ///
-    /// Create a new task without weakifying progress/fulfill/reject handlers
-    ///
-    /// - e.g. Task<P, V, E>(paused: false) { progress, fulfill, reject, configure in ... }
-    ///
-    public convenience init(paused: Bool, initClosure: @escaping InitClosure)
-    {
-        self.init(weakified: false, paused: paused, initClosure: initClosure)
-    }
-    
-    ///
-    /// Create a new task without weakifying progress/fulfill/reject handlers (non-paused)
-    ///
-    /// - e.g. Task<P, V, E> { progress, fulfill, reject, configure in ... }
-    ///
-    public convenience init(initClosure: @escaping InitClosure)
-    {
-        self.init(weakified: false, paused: false, initClosure: initClosure)
+        self.setup(on: queue, paused: paused, _initClosure: _initClosure)
     }
     
     ///
@@ -208,87 +216,49 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         self.name = "RejectedTask"
     }
     
-    ///
-    /// Create promise-like task which only allows fulfill & reject (no progress & configure)
-    ///
-    /// - e.g. Task<Any, Value, Error> { fulfill, reject in ... }
-    ///
-    public convenience init(promiseInitClosure: @escaping PromiseInitClosure)
-    {
-        self.init(initClosure: { fulfill, reject, configure in
-            promiseInitClosure(fulfill, { error in reject(error) })
-        })
-    }
-    
-    /// internal-init for accessing `machine` inside `_initClosure`
+    /// private-init for accessing `machine` inside `_initClosure`
     /// (NOTE: _initClosure has _RejectInfoHandler as argument)
-    internal init(weakified: Bool = false, paused: Bool = false, _initClosure: @escaping _InitClosure)
+    private init(on queue: SwiftTaskQueue = .current, paused: Bool = false, _initClosure: @escaping _InitClosure)
     {
-        self._weakified = weakified
         self._paused = paused
-        self._machine = _Machine(weakified: weakified, paused: paused)
+        self._machine = _Machine(on: queue, paused: paused)
         
-        self.setup(weakified: weakified, paused: paused, _initClosure: _initClosure)
+        self.setup(on: queue, paused: paused, _initClosure: _initClosure)
     }
     
     // NOTE: don't use `internal init` for this setup method, or this will be a designated initializer
-    internal func setup(weakified: Bool, paused: Bool, _initClosure: @escaping _InitClosure)
+    private func setup(on queue: SwiftTaskQueue, paused: Bool, _initClosure: @escaping _InitClosure)
     {
-//        #if DEBUG
-//            let addr = String(format: "%p", unsafeAddressOf(self))
-//            NSLog("[init] \(self.name) \(addr)")
-//        #endif
+        #if DEBUG
+            gcount += 1
+            icount = gcount
+            let addr = ObjectIdentifier(self)
+            print("[init] \(self.name) \(addr) \(icount)")
+        #endif
         
         self._initClosure = _initClosure
         
         // will be invoked on 1st resume (only once)
-        self._machine.initResumeClosure.rawValue = { [weak self] in
+        self._machine.initResumeClosure.rawValue = {
             
-            // strongify `self` on 1st resume
-            if let self_ = self {
-                
-                var fulfillHandler: FulfillHandler
-                var rejectInfoHandler: _RejectInfoHandler
-                
-                if weakified {
-                    //
-                    // NOTE:
-                    // When `weakified = true`,
-                    // each handler will NOT capture `self_` (strongSelf on 1st resume)
-                    // so it will immediately deinit if not retained in somewhere else.
-                    //
-                    fulfillHandler = { [weak self_] (value: Value) in
-                        if let self_ = self_ {
-                            self_._machine.handleFulfill(value)
-                        }
-                    }
-                    
-                    rejectInfoHandler = { [weak self_] (errorInfo: ErrorInfo) in
-                        if let self_ = self_ {
-                            self_._machine.handleRejectInfo(errorInfo)
-                        }
-                    }
-                }
-                else {
-                    //
-                    // NOTE:
-                    // When `weakified = false`,
-                    // each handler will capture `self_` (strongSelf on 1st resume)
-                    // so that it will live until fulfilled/rejected.
-                    //
-                    fulfillHandler = { (value: Value) in
-                        self_._machine.handleFulfill(value)
-                    }
-                    
-                    rejectInfoHandler = { (errorInfo: ErrorInfo) in
-                        self_._machine.handleRejectInfo(errorInfo)
-                    }
-                }
-                
-                _initClosure(self_._machine, fulfillHandler, rejectInfoHandler, self_._machine.configuration)
-                
+            var fulfillHandler: FulfillHandler
+            var rejectInfoHandler: _RejectInfoHandler
+
+            fulfillHandler = { (value: Value) in
+                self._machine.handleFulfill(value)
             }
-        
+
+            rejectInfoHandler = { (errorInfo: ErrorInfo) in
+                self._machine.handleRejectInfo(errorInfo)
+            }
+
+            if queue == .current {
+                _initClosure(self._machine, fulfillHandler, rejectInfoHandler, self._machine.configuration)
+            } else {
+                queue.queue.async {
+                    _initClosure(self._machine, fulfillHandler, rejectInfoHandler, self._machine.configuration)
+                }
+            }
         }
         
         if !paused {
@@ -298,10 +268,10 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     
     deinit
     {
-//        #if DEBUG
-//            let addr = String(format: "%p", unsafeAddressOf(self))
-//            NSLog("[deinit] \(self.name) \(addr)")
-//        #endif
+        #if DEBUG
+            let addr = ObjectIdentifier(self)
+            print("[deinit] \(self.name) \(addr) \(icount)")
+        #endif
         
         // cancel in case machine is still running
         self.cancel(error: nil)
@@ -314,19 +284,23 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         return self
     }
     
+    // MARK: - clone
+    
     /// Creates cloned task.
     public func clone() -> Task
     {
-        let clonedTask = Task(weakified: self._weakified, paused: self._paused, _initClosure: self._initClosure)
+        let clonedTask = Task(on: _machine.queue, paused: self._paused, _initClosure: self._initClosure)
         clonedTask.name = "\(self.name)-clone"
         return clonedTask
     }
     
     private func pausedClone() -> Task {
-        let clonedTask = Task(weakified: self._weakified, paused: true, _initClosure: self._initClosure)
+        let clonedTask = Task(on: _machine.queue, paused: true, _initClosure: self._initClosure)
         clonedTask.name = "\(self.name)-clone"
         return clonedTask
     }
+    
+    // MARK: - retry
     
     /// Returns new task that is retryable for `maxRetryCount (= maxTryCount-1)` times.
     /// - Parameter condition: Predicate that will be evaluated on each retry timing.
@@ -381,6 +355,8 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         }.name("\(self.name)-try(\(maxRetryCount))")
     }
     
+    // MARK: - then
+    
     ///
     /// `then` (fulfilled & rejected) + closure returning **value**.
     /// (similar to `map` in functional programming)
@@ -389,15 +365,15 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    @discardableResult func then<Value2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
+    @discardableResult func then<Value2>(on queue: SwiftTaskQueue, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
     {
         var dummyCanceller: Canceller? = nil
-        return self.then(&dummyCanceller, thenClosure)
+        return self.then(on: queue, &dummyCanceller, thenClosure)
     }
     
-    func then<Value2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
+    func then<Value2, C: Canceller>(on queue: SwiftTaskQueue, _ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Value2) -> Task<Value2, Error>
     {
-        return self.then(&canceller) { (value, errorInfo) -> Task<Value2, Error> in
+        return self.then(on: queue, &canceller) { (value, errorInfo) -> Task<Value2, Error> in
             return Task<Value2, Error>(value: thenClosure(value, errorInfo))
         }
     }
@@ -410,10 +386,10 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    func then<Value2, Error2>(_ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
+    func then<Value2, Error2>(on queue: SwiftTaskQueue, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
     {
         var dummyCanceller: Canceller? = nil
-        return self.then(&dummyCanceller, thenClosure)
+        return self.then(on: queue, &dummyCanceller, thenClosure)
     }
     
     //
@@ -424,9 +400,9 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     //
     /// - Returns: New `Task`
     ///
-    func then<Value2, Error2, C: Canceller>(_ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
+    func then<Value2, Error2, C: Canceller>(on queue: SwiftTaskQueue, _ canceller: inout C?, _ thenClosure: @escaping (Value?, ErrorInfo?) -> Task<Value2, Error2>) -> Task<Value2, Error2>
     {
-        return Task<Value2, Error2> { [unowned self, weak canceller] newMachine, fulfill, _reject, configure in
+        return Task<Value2, Error2>(on: queue) { [unowned self, weak canceller] newMachine, fulfill, _reject, configure in
             
             //
             // NOTE: 
@@ -437,7 +413,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
             //
             let selfMachine = self._machine
             
-            self._then(&canceller) {
+            self._then(on: queue, &canceller) {
                 let innerTask = thenClosure(selfMachine.value.rawValue, selfMachine.errorInfo.rawValue)
                 _bindInnerTask(innerTask, newMachine, fulfill, _reject, configure)
             }
@@ -446,20 +422,28 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     }
 
     /// invokes `completionHandler` "now" or "in the future"
-    private func _then<C: Canceller>(_ canceller: inout C?, _ completionHandler: @escaping () -> Void)
+    private func _then<C: Canceller>(on queue: SwiftTaskQueue, _ canceller: inout C?, _ completionHandler: @escaping () -> Void)
     {
         switch self.state {
             case .Fulfilled, .Rejected, .Cancelled:
-                completionHandler()
+                if queue == .current {
+                    completionHandler()
+                } else {
+                    queue.queue.async {
+                        completionHandler()
+                    }
+                }
             default:
                 var token: _HandlerToken? = nil
-                self._machine.addCompletionHandler(&token, completionHandler)
+                self._machine.addCompletionHandler(queue, &token, completionHandler)
             
                 canceller = C { [weak self] in
                     self?._machine.removeCompletionHandler(token)
                 }
         }
     }
+    
+    // MARK: - success
     
     ///
     /// `success` (fulfilled) + closure returning **value**.
@@ -469,15 +453,15 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    @discardableResult public func success<Value2>(_ successClosure: @escaping (Value) -> Value2) -> Task<Value2, Error>
+    @discardableResult public func success<Value2>(on queue: SwiftTaskQueue = .current, _ successClosure: @escaping (Value) -> Value2) -> Task<Value2, Error>
     {
         var dummyCanceller: Canceller? = nil
-        return self.success(&dummyCanceller, successClosure)
+        return self.success(on: queue, &dummyCanceller, successClosure)
     }
     
-    public func success<Value2, C: Canceller>(_ canceller: inout C?, _ successClosure: @escaping (Value) -> Value2) -> Task<Value2, Error>
+    public func success<Value2, C: Canceller>(on queue: SwiftTaskQueue = .current, _ canceller: inout C?, _ successClosure: @escaping (Value) -> Value2) -> Task<Value2, Error>
     {
-        return self.success(&canceller) { (value: Value) -> Task<Value2, Error> in
+        return self.success(on: queue, &canceller) { (value: Value) -> Task<Value2, Error> in
             return Task<Value2, Error>(value: successClosure(value))
         }
     }
@@ -490,25 +474,26 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    public func success<Value2, Error2>(_ successClosure: @escaping (Value) -> Task<Value2, Error2>) -> Task<Value2, Error>
+    public func success<Value2, Error2>(on queue: SwiftTaskQueue = .current, _ successClosure: @escaping (Value) -> Task<Value2, Error2>) -> Task<Value2, Error>
     {
         var dummyCanceller: Canceller? = nil
-        return self.success(&dummyCanceller, successClosure)
+        return self.success(on: queue, &dummyCanceller, successClosure)
     }
     
-    public func success<Value2, Error2, C: Canceller>(_ canceller: inout C?, _ successClosure: @escaping (Value) -> Task<Value2, Error2>) -> Task<Value2, Error>
+    public func success<Value2, Error2, C: Canceller>(on queue: SwiftTaskQueue = .current, _ canceller: inout C?, _ successClosure: @escaping (Value) -> Task<Value2, Error2>) -> Task<Value2, Error>
     {
         var localCanceller = canceller; defer { canceller = localCanceller }
-        return Task<Value2, Error> { [unowned self] newMachine, fulfill, _reject, configure in
+        let newQueue = queue == .current ? _machine.queue : queue
+        return Task<Value2, Error>(on: newQueue) { newMachine, fulfill, _reject, configure in
             
             #if DEBUG
                 configure.isChained = true
             #endif
             
             let selfMachine = self._machine
-            
+
             // NOTE: using `self._then()` + `selfMachine` instead of `self.then()` will reduce Task allocation
-            self._then(&localCanceller) {
+            self._then(on: newQueue, &localCanceller) {
                 if let value = selfMachine.value.rawValue {
                     let innerTask = successClosure(value)
                     _bindInnerTask(innerTask, newMachine, fulfill, _reject, configure)
@@ -521,6 +506,8 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         }.name("\(self.name)-success")
     }
     
+    // MARK: - failure
+    
     ///
     /// `failure` (rejected or cancelled) + closure returning **value**.
     /// (synonym for `mapError` in functional programming)
@@ -530,15 +517,15 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    @discardableResult public func failure(_ failureClosure: @escaping (ErrorInfo) -> Value) -> Task
+    @discardableResult public func failure(on queue: SwiftTaskQueue = .current, _ failureClosure: @escaping (ErrorInfo) -> Value) -> Task
     {
         var dummyCanceller: Canceller? = nil
-        return self.failure(&dummyCanceller, failureClosure)
+        return self.failure(on: queue, &dummyCanceller, failureClosure)
     }
     
-    public func failure<C: Canceller>(_ canceller: inout C?, _ failureClosure: @escaping (ErrorInfo) -> Value) -> Task
+    public func failure<C: Canceller>(on queue: SwiftTaskQueue = .current, _ canceller: inout C?, _ failureClosure: @escaping (ErrorInfo) -> Value) -> Task
     {
-        return self.failure(&canceller) { (errorInfo: ErrorInfo) -> Task in
+        return self.failure(on: queue, &canceller) { (errorInfo: ErrorInfo) -> Task in
             return Task(value: failureClosure(errorInfo))
         }
     }
@@ -552,16 +539,17 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - Returns: New `Task`
     ///
-    public func failure<Error2>(_ failureClosure: @escaping (ErrorInfo) -> Task<Value, Error2>) -> Task<Value, Error2>
+    public func failure<Error2>(on queue: SwiftTaskQueue = .current, _ failureClosure: @escaping (ErrorInfo) -> Task<Value, Error2>) -> Task<Value, Error2>
     {
         var dummyCanceller: Canceller? = nil
-        return self.failure(&dummyCanceller, failureClosure)
+        return self.failure(on: queue, &dummyCanceller, failureClosure)
     }
     
-    public func failure<Error2, C: Canceller>(_ canceller: inout C?, _ failureClosure: @escaping (ErrorInfo) -> Task<Value, Error2>) -> Task<Value, Error2>
+    public func failure<Error2, C: Canceller>(on queue: SwiftTaskQueue = .current, _ canceller: inout C?, _ failureClosure: @escaping (ErrorInfo) -> Task<Value, Error2>) -> Task<Value, Error2>
     {
         var localCanceller = canceller; defer { canceller = localCanceller }
-        return Task<Value, Error2> { [unowned self] newMachine, fulfill, _reject, configure in
+        let newQueue = queue == .current ? _machine.queue : queue
+        return Task<Value, Error2>(on: newQueue) { newMachine, fulfill, _reject, configure in
             
             #if DEBUG
                 configure.isChained = true
@@ -569,7 +557,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
             
             let selfMachine = self._machine
             
-            self._then(&localCanceller) {
+            self._then(on: newQueue, &localCanceller) {
                 if let value = selfMachine.value.rawValue {
                     fulfill(value)
                 }
@@ -585,20 +573,22 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     // MARK: - finally
     
     @discardableResult
-    public func finally(_ closure: @escaping () -> Void) -> Task<Value, Error>
+    public func finally(on queue: SwiftTaskQueue = .current, _ closure: @escaping () -> Void) -> Task<Value, Error>
     {
         var dummyCanceller: Canceller? = nil
-        return self.finally(&dummyCanceller, closure)
+        return self.finally(on: queue, &dummyCanceller, closure)
     }
     
-    public func finally<C: Canceller>(_ canceller: inout C?, _ closure: @escaping () -> Void) -> Task<Value, Error> {
+    public func finally<C: Canceller>(on queue: SwiftTaskQueue = .current, _ canceller: inout C?, _ closure: @escaping () -> Void) -> Task<Value, Error> {
         
-        self._then(&canceller) {
+        self._then(on: queue, &canceller) {
             closure()
         }
         
         return self.name("\(self.name)-finally")
     }
+    
+    // MARK: - on
     
     ///
     /// Add side-effects after completion.
@@ -616,7 +606,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     {
         let selfMachine = self._machine
         
-        self._then(&canceller) {
+        self._then(on: selfMachine.queue, &canceller) {
             if let value = selfMachine.value.rawValue {
                 success?(value)
             }
@@ -672,7 +662,7 @@ internal func _bindInnerTask<Value2, Error, Error2>(
             break
     }
     
-    innerTask.then { (value: Value2?, errorInfo2: Task<Value2, Error2>.ErrorInfo?) -> Void in
+    innerTask.then(on: newMachine.queue) { (value: Value2?, errorInfo2: Task<Value2, Error2>.ErrorInfo?) -> Void in
         if let value = value {
             fulfill(value)
         }

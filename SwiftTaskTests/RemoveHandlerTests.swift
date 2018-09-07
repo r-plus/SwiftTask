@@ -32,7 +32,7 @@ class RemoveHandlerTests: _TestCase
             XCTAssertEqual(value, "OK")
             return "Now OK"
         
-        }.then(&canceller) { value, errorInfo -> String in
+        }.then(on: .current, &canceller) { value, errorInfo -> String in
             
             print("Should never reach here")
             
@@ -40,7 +40,7 @@ class RemoveHandlerTests: _TestCase
             
             return "Never reaches here"
             
-        }.then { value, errorInfo -> Void in
+        }.then(on: .current) { value, errorInfo -> Void in
             
             print("value = \(String(describing: value))")
             print("errorInfo = \(String(describing: errorInfo))")

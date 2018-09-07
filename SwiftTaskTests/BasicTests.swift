@@ -49,7 +49,7 @@ class BasicTests: _TestCase
             XCTAssertEqual(error!, "ERROR")
             return "Now RECOVERED"
             
-        }.then { value, errorInfo -> Task in // `task.then {...}` = JavaScript's `promise.then(onFulfilled, onRejected)`
+        }.then(on: .current) { value, errorInfo -> Task in // `task.then {...}` = JavaScript's `promise.then(onFulfilled, onRejected)`
             
             print("value = \(String(describing: value))") // either "Now OK" or "Now RECOVERED"
             
@@ -58,7 +58,7 @@ class BasicTests: _TestCase
             
             return Task(error: "ABORT")
             
-        }.then { value, errorInfo -> Void in
+        }.then(on: .current) { value, errorInfo -> Void in
                 
             print("errorInfo = \(String(describing: errorInfo))")
             
