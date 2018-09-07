@@ -17,13 +17,12 @@ See [ReactKit Wiki page](https://github.com/ReactKit/ReactKit/wiki/How-to-instal
 
 ```swift
 // define task
-let task = Task<Float, String, NSError> { fulfill, reject, configure in
+let task = Task<String, NSError> { fulfill, reject, configure in
 
     player.doSomething(completion: { (value: NSData?, error: NSError?) in
         if error == nil {
             fulfill("OK")
-        }
-        else {
+        } else {
             reject(error)
         }
     })
@@ -38,7 +37,6 @@ let task = Task<Float, String, NSError> { fulfill, reject, configure in
     configure.cancel = { [weak player] in
         player?.cancel()
     }
-
 }
 
 // set success & failure
@@ -118,13 +116,12 @@ For more examples, please see XCTest cases.
 Define your `task` inside `initClosure`.
 
 ```swift
-let task = Task<Float, NSString?, NSError> { fulfill, reject, configure in
+let task = Task<NSString?, NSError> { fulfill, reject, configure in
 
     player.doSomethingWithCompletion { (value: NSString?, error: NSError?) in
         if error == nil {
             fulfill(value)
-        }
-        else {
+        } else {
             reject(error)
         }
     }
@@ -187,12 +184,20 @@ task.success { (value: String) -> Void in
 
 See [Retry-able section](#retry-able).
 
-### Task.all(_ tasks:) -> newTask
+### all(_ tasks:) -> newTask
 
-`Task.all(tasks)` is a new task that performs all `tasks` simultaneously and will be:
+`all(tasks)` is a new task that performs all `tasks` simultaneously and will be:
 
 - fulfilled when **all tasks are fulfilled**
 - rejected when **any of the task is rejected**
+
+### zip(task1, task2) -> newTask
+
+`zip(task1, task2)` is a new task that perform each task simultaneously. Difference with `all(_ tasks)` is each tasks could have different generic types.
+
+### allSettled(_ tasks) -> newTask
+
+`allSettled(_ tasks)` is a new task that perform each task simultaneously. returned newTask is always fulfilled state even if any tasks rejected. You can check what task is fulfilled or rejected by Settled object.
 
 ## Related Articles
 
