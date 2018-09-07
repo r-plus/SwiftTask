@@ -22,9 +22,9 @@ class TypeInferenceTests: _TestCase
         }.failure { error, isCancelled -> [String] in   // NOTE: errorInfo = (error, isCancelled)
             XCTFail("Because of preceding failure-recovering, this failure should never be performed (just added for type-inference test)")
             return ["You", "shall", "not", "pass"]
-        }.then { value, errorInfo -> String in
+        }.then(on: .current) { value, errorInfo -> String in
             return value!.joined(separator: " ")
-        }.then { value, errorInfo -> Void in
+        }.then(on: .current) { value, errorInfo -> Void in
             XCTAssertEqual(value!, "Looks good to me")
             return
         }

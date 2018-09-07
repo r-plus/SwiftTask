@@ -48,20 +48,65 @@ class SwiftTaskTests: _TestCase
         }
     }
     
-    // fulfill/reject handlers only, like JavaScript Promise
-    func testInit_fulfill_reject()
-    {
-        // NOTE: this is non-async test
-        if self.isAsync { return }
+    func testInit_dispatch() {
+        if !self.isAsync { return }
+        let expect = self.expectation(description: #function)
         
-        Task<String, ErrorString> { fulfill, reject in
-            
-            fulfill("OK")
-            return
-            
-        }.success { value -> Void in
-            XCTAssertEqual(value, "OK")
+        XCTAssertTrue(Thread.isMainThread)
+        DispatchQueue.global(qos: .utility).async {
+            Task<String, ErrorString> { fulfill, reject, _ in
+                XCTAssertTrue(!Thread.isMainThread)
+                XCTAssertTrue(Thread.current.qualityOfService == .utility)
+                fulfill("OK")
+            }.success { value -> Void in
+                // keep prev. thread if not specified.
+                XCTAssertTrue(!Thread.isMainThread)
+                XCTAssertTrue(Thread.current.qualityOfService == .utility)
+                XCTAssertEqual(value, "OK")
+            }.success { _ -> Task<Void, ErrorString> in
+                // thread changeable
+                XCTAssertTrue(!Thread.isMainThread)
+                XCTAssertTrue(Thread.current.qualityOfService == .utility)
+                return Task<String, ErrorString>(value: "OK2").success { (_) -> Void in
+                    XCTAssertTrue(!Thread.isMainThread)
+                    XCTAssertTrue(Thread.current.qualityOfService == .utility)
+                }
+            }.success { (_) -> Void in
+                XCTAssertTrue(!Thread.isMainThread)
+                XCTAssertTrue(Thread.current.qualityOfService == .utility)
+                expect.fulfill()
+            }
         }
+        self.wait()
+    }
+    
+    func testInit_on_queue() {
+        if !self.isAsync { return }
+        let expect = self.expectation(description: #function)
+        
+        DispatchQueue.global(qos: .utility).async {
+            Task<String, ErrorString>(on: .main) { fulfill, reject, _ in
+                XCTAssertTrue(Thread.isMainThread)
+                fulfill("OK")
+            }.success { value -> Void in
+                // keep prev. thread if not specified.
+                XCTAssertTrue(Thread.isMainThread)
+                XCTAssertEqual(value, "OK")
+            }.success(on: .background) { _ -> Task<Void, ErrorString> in
+                // thread changeable
+                XCTAssertTrue(!Thread.isMainThread)
+                XCTAssertTrue(Thread.current.qualityOfService == .background)
+                return Task<String, ErrorString>(value: "OK2").success(on: .main) { (_) -> Void in
+                    XCTAssertTrue(Thread.isMainThread)
+                }
+            }.success { (_) -> Void in
+                // keep prev(not keep inner task) thread (background!) if not specified.
+                XCTAssertTrue(!Thread.isMainThread)
+                XCTAssertTrue(Thread.current.qualityOfService == .background)
+                expect.fulfill()
+            }
+        }
+        self.wait()
     }
     
     //--------------------------------------------------
@@ -220,14 +265,14 @@ class SwiftTaskTests: _TestCase
                 fulfill("OK")
             }
             
-        }.then { value, errorInfo -> String in
+        }.then(on: .current) { value, errorInfo -> String in
             // thenClosure can handle both fulfilled & rejected
                 
             XCTAssertEqual(value!, "OK")
             XCTAssertTrue(errorInfo == nil)
             return "OK2"
             
-        }.then { value, errorInfo -> Void in
+        }.then(on: .current) { value, errorInfo -> Void in
                 
             XCTAssertEqual(value!, "OK2")
             XCTAssertTrue(errorInfo == nil)
@@ -248,12 +293,14 @@ class SwiftTaskTests: _TestCase
         
         Task<Void, ErrorString> { fulfill, reject, configure in
             
+            XCTAssertTrue(Thread.isMainThread)
             self.perform {
                 reject("ERROR")
             }
             
         }.failure { error, isCancelled -> Void in
-                
+            
+            XCTAssertTrue(Thread.isMainThread)
             XCTAssertEqual(error!, "ERROR")
             XCTAssertFalse(isCancelled)
             
@@ -261,6 +308,25 @@ class SwiftTaskTests: _TestCase
             
         }
         
+        self.wait()
+    }
+    
+    func testReject_failure_on_queue()
+    {
+        let expect = self.expectation(description: #function)
+        
+        Task<Void, ErrorString> { fulfill, reject, configure in
+            XCTAssertTrue(Thread.isMainThread)
+            self.perform {
+                reject("ERROR")
+            }
+        }.failure(on: .background) { error, isCancelled -> Void in
+            XCTAssertTrue(!Thread.isMainThread)
+            XCTAssertTrue(Thread.current.qualityOfService == .background)
+            XCTAssertEqual(error!, "ERROR")
+            XCTAssertFalse(isCancelled)
+            expect.fulfill()
+        }
         self.wait()
     }
     
@@ -402,7 +468,7 @@ class SwiftTaskTests: _TestCase
                 reject("ERROR")
             }
             
-        }.then { value, errorInfo -> String in
+        }.then(on: .current) { value, errorInfo -> String in
             // thenClosure can handle both fulfilled & rejected
             
             XCTAssertTrue(value == nil)
@@ -411,7 +477,7 @@ class SwiftTaskTests: _TestCase
             
             return "OK"
             
-        }.then { value, errorInfo -> Void in
+        }.then(on: .current) { value, errorInfo -> Void in
             
             XCTAssertEqual(value!, "OK")
             XCTAssertTrue(errorInfo == nil)
@@ -606,7 +672,7 @@ class SwiftTaskTests: _TestCase
         
         var task2: _InterruptableTask? = nil
         
-        let task3 = task1.then { value, errorInfo -> _InterruptableTask in
+        let task3 = task1.then(on: .current) { value, errorInfo -> _InterruptableTask in
             
             task2 = _interruptableTask(progressCount: 5)
             return task2!
@@ -698,7 +764,7 @@ class SwiftTaskTests: _TestCase
         weak var innerTask: _InterruptableTask?
         
         // chain async-task with `then`
-        let task2 = task.then { (_, _) -> _InterruptableTask in
+        let task2 = task.then(on: .current) { (_, _) -> _InterruptableTask in
             innerTask = _interruptableTask(progressCount: 5)
             return innerTask!
         }
@@ -750,7 +816,7 @@ class SwiftTaskTests: _TestCase
     }
     
     //--------------------------------------------------
-    // MARK: - Try
+    // MARK: - Retry
     //--------------------------------------------------
     
     func testRetry_success()
@@ -789,6 +855,47 @@ class SwiftTaskTests: _TestCase
             XCTAssertEqual(value, "OK")
             expect.fulfill()
                 
+        }
+        
+        self.wait()
+        
+        XCTAssertEqual(actualTryCount, fulfilledTryCount, "`actualTryCount` should be stopped at `fulfilledTryCount`, not `maxTryCount`.")
+    }
+    
+    func testRetry_success_on_queue()
+    {
+        // NOTE: this is async test
+        if !self.isAsync { return }
+        
+        let expect = self.expectation(description: #function)
+        let maxTryCount = 3
+        let fulfilledTryCount = 2
+        var actualTryCount = 0
+        
+        DispatchQueue.global(qos: .background).async {
+            Task<String, ErrorString>(on: .utility) { fulfill, reject, configure in
+                XCTAssertTrue(Thread.current.qualityOfService == .utility)
+                print("qos: \(Thread.current.qualityOfService.rawValue) \(actualTryCount)")
+                self.perform {
+                    actualTryCount += 1
+                    XCTAssertEqual(actualTryCount, configure.retryCount+1)
+    
+                    if actualTryCount != fulfilledTryCount {
+                        reject("ERROR \(actualTryCount)")
+                    }
+                    else {
+                        fulfill("OK")
+                    }
+                }
+            }.retry(maxTryCount-1).failure(on: .main) { errorInfo -> String in
+                XCTFail("Should never reach here because `task.retry(\(maxTryCount-1))` will be fulfilled at `fulfilledTryCount` try even though previous retries will be rejected.")
+                return "DUMMY"
+            }.success { value -> Void in
+                // keep prev (failure method returned task) thread.
+                XCTAssertTrue(Thread.isMainThread)
+                XCTAssertEqual(value, "OK")
+                expect.fulfill()
+            }
         }
         
         self.wait()

@@ -18,8 +18,8 @@ internal class _StateMachine<Value, Error>
 {
     internal typealias ErrorInfo = Task<Value, Error>.ErrorInfo
     
-    internal let weakified: Bool
     internal let state: _Atomic<TaskState>
+    internal let queue: SwiftTaskQueue
     
     internal let value: _Atomic<Value?> = _Atomic(nil)
     internal let errorInfo: _Atomic<ErrorInfo?> = _Atomic(nil)
@@ -34,19 +34,19 @@ internal class _StateMachine<Value, Error>
     
     private var _lock = _RecursiveLock()
     
-    internal init(weakified: Bool, paused: Bool)
+    internal init(on queue: SwiftTaskQueue, paused: Bool)
     {
-        self.weakified = weakified
+        self.queue = queue
         self.state = _Atomic(paused ? .Paused : .Running)
     }
     
-    @discardableResult internal func addCompletionHandler(_ token: inout _HandlerToken?, _ completionHandler: @escaping () -> Void) -> Bool
+    @discardableResult internal func addCompletionHandler(_ queue: SwiftTaskQueue, _ token: inout _HandlerToken?, _ completionHandler: @escaping () -> Void) -> Bool
     {
         self._lock.lock()
         defer { self._lock.unlock() }
         
         if self.state.rawValue == .Running || self.state.rawValue == .Paused {
-            token = self._completionHandlers.append(completionHandler)
+            token = self._completionHandlers.append(completionHandler, queue: queue)
             return token != nil
         }
         else {
@@ -122,7 +122,13 @@ internal class _StateMachine<Value, Error>
             // Don't use `_lock` here so that dispatch_async'ed `handleProgress` inside `initResumeClosure()`
             // will be safely called even when current thread goes into sleep.
             //
-            initResumeClosure()
+            if queue == .current {
+                initResumeClosure()
+            } else {
+                queue.queue.async {
+                    initResumeClosure()
+                }
+            }
             
             //
             // Comment-Out:
@@ -144,7 +150,13 @@ internal class _StateMachine<Value, Error>
     {
         let newState = self.state.updateIf { $0 == .Paused ? .Running : nil }
         if let _ = newState {
-            self.configuration.resume?()
+            if queue == .current {
+                self.configuration.resume?()
+            } else {
+                queue.queue.async {
+                    self.configuration.resume?()
+                }
+            }
             return true
         }
         else {
@@ -170,8 +182,14 @@ internal class _StateMachine<Value, Error>
     
     private func _finish()
     {
-        for handler in self._completionHandlers {
-            handler()
+        for (handler, queue) in self._completionHandlers {
+            if queue == .current {
+                handler()
+            } else {
+                queue.queue.async {
+                    handler()
+                }
+            }
         }
         
         self._completionHandlers.removeAll()
@@ -193,16 +211,16 @@ internal struct _HandlerToken
 
 internal struct _Handlers<T>: Sequence
 {
-    internal typealias KeyValue = (key: Int, value: T)
+    internal typealias KeyValue = (key: Int, value: T, queue: SwiftTaskQueue)
     
     private var currentKey: Int = 0
     private var elements = [KeyValue]()
-    
-    internal mutating func append(_ value: T) -> _HandlerToken
+
+    internal mutating func append(_ value: T, queue: SwiftTaskQueue) -> _HandlerToken
     {
         self.currentKey = self.currentKey &+ 1
         
-        self.elements += [(key: self.currentKey, value: value)]
+        self.elements += [(key: self.currentKey, value: value, queue: queue)]
         
         return _HandlerToken(key: self.currentKey)
     }
@@ -222,8 +240,8 @@ internal struct _Handlers<T>: Sequence
         self.elements.removeAll(keepingCapacity: keepCapacity)
     }
     
-    internal func makeIterator() -> AnyIterator<T>
+    internal func makeIterator() -> AnyIterator<(T, SwiftTaskQueue)>
     {
-        return AnyIterator(self.elements.map { $0.value }.makeIterator())
+        return AnyIterator(self.elements.map { ($0.value, $0.queue) }.makeIterator())
     }
 }

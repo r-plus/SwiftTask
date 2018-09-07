@@ -64,7 +64,7 @@ class MultipleErrorTypesTests: _TestCase
         let expect = self.expectation(description: #function)
         
         self._task1(ok: true)
-            .then { value, errorInfo -> Task2 in
+            .then(on: .current) { value, errorInfo -> Task2 in
                 
                 print("task1.then")
                 self.flow += [3]
@@ -72,7 +72,7 @@ class MultipleErrorTypesTests: _TestCase
                 return self._task2(ok: true)
                 
             }
-            .then { value, errorInfo -> Void in
+            .then(on: .current) { value, errorInfo -> Void in
                 
                 print("task1.then.then (task2 should end at this point)")
                 self.flow += [6]
@@ -130,7 +130,7 @@ class MultipleErrorTypesTests: _TestCase
                 return self._task2(ok: false) // inner rejection with different Error type
                 
             }
-            .then { value, errorInfo -> Void in
+            .then(on: .current) { value, errorInfo -> Void in
                 
                 print("task1.success.success (task2 should end at this point)")
                 self.flow += [6]
@@ -169,7 +169,7 @@ class MultipleErrorTypesTests: _TestCase
                     .failure { Task<MyEnum, String>(error: "Mapping errorInfo=\($0.error!) to String") }  // error-conversion
                 
             }
-            .then { value, errorInfo -> Void in
+            .then(on: .current) { value, errorInfo -> Void in
                 
                 print("task1.success.success (task2 should end at this point)")
                 self.flow += [6]
@@ -204,7 +204,7 @@ class MultipleErrorTypesTests: _TestCase
                 // Returning `Task2` won't work since same Value type as `task1` is required inside `task1.failure()`,
                 // so use `then()` to promote `Task2` to `Task<..., Task1.Value, ...>`.
                 //
-                return self._task2(ok: false).then { value, errorInfo in
+                return self._task2(ok: false).then(on: .current) { value, errorInfo in
                     return Task<String, Dummy>(error: Dummy())  // error task
                 }
             }
