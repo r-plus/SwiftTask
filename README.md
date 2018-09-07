@@ -1,4 +1,4 @@
-SwiftTask [![Circle CI](https://circleci.com/gh/ReactKit/SwiftTask/tree/swift%2F2.0.svg?style=svg)](https://circleci.com/gh/ReactKit/SwiftTask/tree/swift%2F2.0)
+SwiftTask [![Build Status](https://app.bitrise.io/app/bebdd8c1213f827d/status.svg?token=xjEXJmfCmIES4UDUSc86lA)](https://app.bitrise.io/app/bebdd8c1213f827d)
 =========
 
 [Promise](http://www.html5rocks.com/en/tutorials/es6/promises/) + pause + cancel + retry for Swift.
@@ -147,53 +147,6 @@ configure.cancel = { [weak player] in
     player?.cancel()
 }
 ```
-
-### task.then(_ thenClosure:) -> newTask
-
-`task.then(thenClosure)` will return a new task where `thenClosure` will be invoked when `task` is either **fulfilled** or **rejected**.
-
-This case is similar to JavaScript's `promise.then(onFulfilled, onRejected)`.
-
-`thenClosure` can be two types of closure form:
-
-1. `thenClosure: (Value?, ErrorInfo?) -> Value2` (flow: *task => newTask*)
-
-  ```swift
-  // let task will be fulfilled with value "Hello"
-
-  task.then { (value: String?, errorInfo: ErrorInfo?) -> String in
-      // nil-check to find out whether task is fulfilled or rejected
-      if errorInfo == nil {
-          return "\(value!) World"
-      }
-      else {
-          return "\(value!) Error"
-      }
-  }.success { (value: String) -> Void in
-      println("\(value)")  // Hello World
-      return"
-  }
-  ```
-
-2. `thenClosure: (Value?, ErrorInfo?) -> Task` (flow: *task => task2 => newTask*)
-
-  ```swift
-  // let task will be fulfilled with value "Hello"
-
-  task.then { (value: String?, errorInfo: ErrorInfo?) -> Task<Float, String, NSError> in
-      if errorInfo == nil {
-          // let task2 will be fulfilled with value "\(value!) Swift"
-          let task2 = ...
-          return task2
-      }
-      else {
-          return someOtherTask
-      }
-  }.success { (value: String) -> Void in
-      println("\(value)")  // Hello Swift
-      return"
-  }
-  ```
 
 ### task.success(_ successClosure:) -> newTask
 
