@@ -240,15 +240,10 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         
         // will be invoked on 1st resume (only once)
         self._machine.initResumeClosure.rawValue = {
-            
-            var fulfillHandler: FulfillHandler
-            var rejectInfoHandler: _RejectInfoHandler
-
-            fulfillHandler = { (value: Value) in
+            let fulfillHandler: FulfillHandler = { (value: Value) in
                 self._machine.handleFulfill(value)
             }
-
-            rejectInfoHandler = { (errorInfo: ErrorInfo) in
+            let rejectInfoHandler: _RejectInfoHandler = { (errorInfo: ErrorInfo) in
                 self._machine.handleRejectInfo(errorInfo)
             }
 
