@@ -489,11 +489,67 @@ class SwiftTaskTests: _TestCase
     }
     
     // MARK: - Finally
-    
+
+    // Finally return Task
+    func testFinally_Return_Task_success() {
+        let expect = self.expectation(description: #function)
+        var fin = false
+
+        Task<String, ErrorString> { fulfill, reject, configure in
+            self.perform {
+                fulfill("OK")
+            }
+        }.finally(on: .background) { () -> Task<Int, String> in
+            XCTAssertTrue(!Thread.isMainThread)
+            XCTAssertTrue(Thread.current.qualityOfService == .background)
+            return Task<Int, String> { fulfill, reject, _ in
+                self.perform {
+                    // task in finally result value/error will ignored but wait state will be finished.
+                    fin = true
+                    reject("ERR")
+                }
+            }
+        }.success { (value) -> Void in
+            XCTAssert(fin)
+            XCTAssertEqual(value, "OK")
+            expect.fulfill()
+        }
+
+        self.wait()
+    }
+
+    func testFinally_Return_Task_failure() {
+        let expect = self.expectation(description: #function)
+        var fin = false
+
+        Task<String, ErrorString> { fulfill, reject, configure in
+            self.perform {
+                reject("NG")
+            }
+        }.success { value -> Void in
+            XCTFail("Should never reach here.")
+        }.finally { () -> Task<Int, String> in
+            return Task<Int, String> { fulfill, reject, _ in
+                self.perform {
+                    // task in finally result value/error will ignored but wait state will be finished.
+                    fin = true
+                    fulfill(1)
+                }
+            }
+        }.failure { error, isCancelled -> Void in
+            XCTAssert(fin)
+            XCTAssertEqual(error!, "NG")
+            expect.fulfill()
+        }
+
+        self.wait()
+    }
+
+    // Finally return Void
     func testFinally_success() {
         let expect = self.expectation(description: #function)
         var fin = false
-        
+
         Task<String, ErrorString> { fulfill, reject, configure in
             self.perform {
                 fulfill("OK")
@@ -528,7 +584,7 @@ class SwiftTaskTests: _TestCase
         
         self.wait()
     }
-    
+
     //--------------------------------------------------
     // MARK: - On
     //--------------------------------------------------

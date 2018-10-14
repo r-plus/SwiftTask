@@ -566,20 +566,54 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     }
     
     // MARK: - finally
-    
-    @discardableResult
-    public func finally(on queue: SwiftTaskQueue = .current, _ closure: @escaping () -> Void) -> Task<Value, Error>
-    {
+
+    public func finally<V2, E2>(on queue: SwiftTaskQueue = .current, _ closure: @escaping () -> Task<V2, E2>) -> Task<Value, Error> {
         var dummyCanceller: Canceller? = nil
         return self.finally(on: queue, &dummyCanceller, closure)
     }
-    
+
+    public func finally<C: Canceller, V2, E2>(on queue: SwiftTaskQueue = .current, _ canceller: inout C?, _ closure: @escaping () -> Task<V2, E2>) -> Task<Value, Error> {
+
+        var localCanceller = canceller; defer { canceller = localCanceller }
+        var dummyCanceller: Canceller? = nil
+        let newQueue = queue == .current ? _machine.queue : queue
+        return Task<Value, Error>(on: newQueue) { newMachine, fulfill, _reject, configure in
+
+            #if DEBUG
+            configure.isChained = true
+            #endif
+
+            let selfMachine = self._machine
+
+            // NOTE: using `self._then()` + `selfMachine` instead of `self.then()` will reduce Task allocation
+            self._then(on: newQueue, &localCanceller) {
+                closure()._then(on: .current, &dummyCanceller) {
+                    if let value = selfMachine.value.rawValue {
+                        fulfill(value)
+                    } else if let errorInfo = selfMachine.errorInfo.rawValue {
+                        _reject(errorInfo)
+                    } else {
+                        fatalError("unknown state")
+                    }
+                }
+            }
+
+        }.name("\(self.name)-finally")
+    }
+
+    @discardableResult
+    public func finally(on queue: SwiftTaskQueue = .current, _ closure: @escaping () -> Void) -> Task<Value, Error> {
+        var dummyCanceller: Canceller? = nil
+        return self.finally(on: queue, &dummyCanceller, closure)
+    }
+
+    @discardableResult
     public func finally<C: Canceller>(on queue: SwiftTaskQueue = .current, _ canceller: inout C?, _ closure: @escaping () -> Void) -> Task<Value, Error> {
-        
+
         self._then(on: queue, &canceller) {
             closure()
         }
-        
+
         return self.name("\(self.name)-finally")
     }
     
