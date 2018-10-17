@@ -567,11 +567,13 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     
     // MARK: - finally
 
+    @discardableResult
     public func finally<V2, E2>(on queue: SwiftTaskQueue = .current, _ closure: @escaping () -> Task<V2, E2>) -> Task<Value, Error> {
         var dummyCanceller: Canceller? = nil
         return self.finally(on: queue, &dummyCanceller, closure)
     }
 
+    @discardableResult
     public func finally<C: Canceller, V2, E2>(on queue: SwiftTaskQueue = .current, _ canceller: inout C?, _ closure: @escaping () -> Task<V2, E2>) -> Task<Value, Error> {
 
         var localCanceller = canceller; defer { canceller = localCanceller }
