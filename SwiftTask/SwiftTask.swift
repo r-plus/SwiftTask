@@ -218,7 +218,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     
     /// private-init for accessing `machine` inside `_initClosure`
     /// (NOTE: _initClosure has _RejectInfoHandler as argument)
-    private init(on queue: SwiftTaskQueue = .current, paused: Bool = false, _initClosure: @escaping _InitClosure)
+    fileprivate init(on queue: SwiftTaskQueue = .current, paused: Bool = false, _initClosure: @escaping _InitClosure)
     {
         self._paused = paused
         self._machine = _Machine(on: queue, paused: paused)
@@ -818,6 +818,49 @@ extension Task
             task.resume()
         }
     }
+}
+
+// MARK: - race
+
+public func race<V, E>(_ tasks: Task<V, E>...) -> Task<V, E> {
+    return race(tasks)
+}
+
+public func race<V, E>(_ tasks: [Task<V, E>]) -> Task<V, E> {
+    precondition(!tasks.isEmpty, "`Task.race(tasks)` with empty `tasks` should not be called. It will never be fulfilled or rejected.")
+    
+    return Task<V, E> { machine, fulfill, _reject, configure in
+        
+        var completedCount = 0
+        let lock = _RecursiveLock()
+        
+        for task in tasks {
+            task.on(success: { (value) in
+                lock.lock()
+                completedCount += 1
+                
+                if completedCount == 1 {
+                    fulfill(value)
+                    Task.cancelAll(tasks)
+                }
+                lock.unlock()
+            }, failure: { (error, isCancelled) in
+                lock.lock()
+                completedCount += 1
+                
+                if completedCount == 1 {
+                    let errorInfo = Task<V, E>.ErrorInfo(error: error, isCancelled: isCancelled)
+                    _reject(errorInfo)
+                }
+                lock.unlock()
+            })
+        }
+        
+        configure.pause = { Task.pauseAll(tasks) }
+        configure.resume = { Task.resumeAll(tasks) }
+        configure.cancel = { Task.cancelAll(tasks) }
+        
+    }.name("Task.race")
 }
 
 // MARK: - allSettled

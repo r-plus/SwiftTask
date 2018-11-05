@@ -1247,9 +1247,57 @@ class SwiftTaskTests: _TestCase
     }
     
     //--------------------------------------------------
+    // MARK: - race
+    //--------------------------------------------------
+
+    func testRaceFailure() {
+        let expect = self.expectation(description: #function)
+        let t1 = Task<String, Int> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
+                fulfill("1")
+            }
+        }
+        let t2 = Task<String, Int> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                reject(2)
+            }
+        }
+        
+        race(t1, t2).on(success: { _ in
+            XCTFail()
+        }, failure: { (e, _) in
+            XCTAssertEqual(e, 2)
+            expect.fulfill()
+        })
+        self.wait()
+    }
+
+    func testRaceSuccess() {
+        let expect = self.expectation(description: #function)
+        let t1 = Task<String, Int> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                fulfill("1")
+            }
+        }
+        let t2 = Task<String, Int> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
+                reject(2)
+            }
+        }
+        
+        race(t1, t2).on(success: { v in
+            XCTAssertEqual(v, "1")
+            expect.fulfill()
+        }, failure: { _, _ in
+            XCTFail()
+        })
+        self.wait()
+    }
+
+    //--------------------------------------------------
     // MARK: - allSettled
     //--------------------------------------------------
-    
+
     func testAllSettled() {
         let expect = self.expectation(description: #function)
         let t1 = Task<String, Int> { fulfill, reject, conf in
