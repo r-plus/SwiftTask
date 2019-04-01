@@ -1347,7 +1347,31 @@ class SwiftTaskTests: _TestCase
         }
         self.wait()
     }
-    
+
+    func testZip_Failure() {
+        let expect = self.expectation(description: #function)
+        let t1 = Task<String, Int> { fulfill, reject, conf in
+            // 5s is longer than 3s(default timeout interval of self.wait())
+            DispatchQueue.global().asyncAfter(deadline: .now() + 5.0) {
+                fulfill("1")
+            }
+        }
+        let t2 = Task<Double, Int> { fulfill, reject, conf in
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+                reject(2)
+            }
+        }
+        
+        zip(t1, t2).success { (value1, value2) -> Void in
+            XCTFail()
+        }.failure { (error, _) -> Void in
+            XCTAssertEqual(error, 2)
+            XCTAssertEqual(t1.state, .Running)
+            expect.fulfill()
+        }
+        self.wait()
+    }
+
     //--------------------------------------------------
     // MARK: - All
     //--------------------------------------------------
