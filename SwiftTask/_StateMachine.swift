@@ -26,7 +26,7 @@ internal class _StateMachine<Value, Error>
     
     internal let configuration = TaskConfiguration()
     
-    /// wrapper closure for `_initClosure` to invoke only once when started `.Running`,
+    /// wrapper closure for `_initClosure` to invoke only once when started `.running`,
     /// and will be set to `nil` afterward
     internal var initResumeClosure: _Atomic<(() -> Void)?> = _Atomic(nil)
     
@@ -37,7 +37,7 @@ internal class _StateMachine<Value, Error>
     internal init(on queue: SwiftTaskQueue, paused: Bool)
     {
         self.queue = queue
-        self.state = _Atomic(paused ? .Paused : .Running)
+        self.state = _Atomic(paused ? .paused : .running)
     }
     
     @discardableResult internal func addCompletionHandler(_ queue: SwiftTaskQueue, _ token: inout _HandlerToken?, _ completionHandler: @escaping () -> Void) -> Bool
@@ -45,7 +45,7 @@ internal class _StateMachine<Value, Error>
         self._lock.lock()
         defer { self._lock.unlock() }
         
-        if self.state.rawValue == .Running || self.state.rawValue == .Paused {
+        if self.state.rawValue == .running || self.state.rawValue == .paused {
             token = self._completionHandlers.append(completionHandler, queue: queue)
             return token != nil
         }
@@ -73,7 +73,7 @@ internal class _StateMachine<Value, Error>
         self._lock.lock()
         defer { self._lock.unlock() }
         
-        let newState = self.state.updateIf { $0 == .Running ? .Fulfilled : nil }
+        let newState = self.state.updateIf { $0 == .running ? .fulfilled : nil }
         if let _ = newState {
             self.value.rawValue = value
             self._finish()
@@ -85,8 +85,8 @@ internal class _StateMachine<Value, Error>
         self._lock.lock()
         defer { self._lock.unlock() }
         
-        let toState = errorInfo.isCancelled ? TaskState.Cancelled : .Rejected
-        let newState = self.state.updateIf { $0 == .Running || $0 == .Paused ? toState : nil }
+        let toState = errorInfo.isCancelled ? TaskState.cancelled : .rejected
+        let newState = self.state.updateIf { $0 == .running || $0 == .paused ? toState : nil }
         if let _ = newState {
             self.errorInfo.rawValue = errorInfo
             self._finish()
@@ -98,7 +98,7 @@ internal class _StateMachine<Value, Error>
         self._lock.lock()
         defer { self._lock.unlock() }
         
-        let newState = self.state.updateIf { $0 == .Running ? .Paused : nil }
+        let newState = self.state.updateIf { $0 == .running ? .paused : nil }
         if let _ = newState {
             self.configuration.pause?()
             return true
@@ -114,7 +114,7 @@ internal class _StateMachine<Value, Error>
         
         if let initResumeClosure = self.initResumeClosure.update({ _ in nil }) {
             
-            self.state.rawValue = .Running
+            self.state.rawValue = .running
             self._lock.unlock()
             
             //
@@ -148,7 +148,7 @@ internal class _StateMachine<Value, Error>
     
     private func _handleResume() -> Bool
     {
-        let newState = self.state.updateIf { $0 == .Paused ? .Running : nil }
+        let newState = self.state.updateIf { $0 == .paused ? .running : nil }
         if let _ = newState {
             if queue == .current {
                 self.configuration.resume?()
@@ -169,7 +169,7 @@ internal class _StateMachine<Value, Error>
         self._lock.lock()
         defer { self._lock.unlock() }
         
-        let newState = self.state.updateIf { $0 == .Running || $0 == .Paused ? .Cancelled : nil }
+        let newState = self.state.updateIf { $0 == .running || $0 == .paused ? .cancelled : nil }
         if let _ = newState {
             self.errorInfo.rawValue = ErrorInfo(error: error, isCancelled: true)
             self._finish()

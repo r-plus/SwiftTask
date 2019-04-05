@@ -14,7 +14,7 @@ typealias _InterruptableTask = Task<String, String>
 /// 2. Checks cancel & pause at t=0.4
 /// 3. Invokes remaining `progressCount-progressCount/2` progresses at t=0.4~ (if not paused)
 /// 4. Either fulfills with "OK" or rejects with "ERROR" at t=0.4~ (if not paused)
-func _interruptableTask(progressCount: Int, finalState: TaskState = .Fulfilled) -> _InterruptableTask
+func _interruptableTask(progressCount: Int, finalState: TaskState = .fulfilled) -> _InterruptableTask
 {
     return _InterruptableTask { fulfill, reject, configure in
         
@@ -39,7 +39,7 @@ func _interruptableTask(progressCount: Int, finalState: TaskState = .Fulfilled) 
                 }
                 
                 DispatchQueue.main.async {
-                    if finalState == .Fulfilled {
+                    if finalState == .fulfilled {
                         fulfill("OK")
                     }
                     else {

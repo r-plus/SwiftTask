@@ -214,7 +214,7 @@ class AlamofireTests: _TestCase
             
             task.cancel()   // sends no error
             
-            XCTAssertEqual(task.state, TaskState.Cancelled)
+            XCTAssertEqual(task.state, TaskState.cancelled)
             
         }
         

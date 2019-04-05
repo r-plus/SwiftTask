@@ -27,7 +27,7 @@ private enum WrappedError
     case ByTask3(Error3)
 
     /// For external cancellation -> internal rejection conversion.
-    case Cancelled
+    case cancelled
 }
 
 class MultipleTasksTests: _TestCase
@@ -166,7 +166,7 @@ extension Task
             }
             else {
                 // converts external cancellation -> internal rejection
-                return Task<Value, WrappedError>(error: .Cancelled)
+                return Task<Value, WrappedError>(error: .cancelled)
             }
         }
     }

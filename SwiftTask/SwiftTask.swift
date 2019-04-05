@@ -34,11 +34,11 @@ public enum SwiftTaskQueue: Equatable {
 // NOTE: nested type inside generic Task class is not allowed in Swift 1.1
 public enum TaskState: String, CustomStringConvertible
 {
-    case Paused = "Paused"
-    case Running = "Running"
-    case Fulfilled = "Fulfilled"
-    case Rejected = "Rejected"
-    case Cancelled = "Cancelled"
+    case paused = "Paused"
+    case running = "Running"
+    case fulfilled = "Fulfilled"
+    case rejected = "Rejected"
+    case cancelled = "Cancelled"
     
     public var description: String
     {
@@ -129,9 +129,9 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
         var valueString: String?
         
         switch (self.state) {
-            case .Fulfilled:
+            case .fulfilled:
                 valueString = "value=\(self.value!)"
-            case .Rejected, .Cancelled:
+            case .rejected, .cancelled:
                 valueString = "errorInfo=\(self.errorInfo!)"
             default:
                 valueString = ""
@@ -163,7 +163,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     ///
     /// - e.g. Task<P, V, E>(weakified: false, paused: false) { progress, fulfill, reject, configure in ... }
     ///
-    /// - Parameter paused: Flag to invoke `initClosure` immediately or not. If `paused = true`, task's initial state will be `.Paused` and needs to `resume()` in order to start `.Running`. If `paused = false`, `initClosure` will be invoked immediately.
+    /// - Parameter paused: Flag to invoke `initClosure` immediately or not. If `paused = true`, task's initial state will be `.paused` and needs to `resume()` in order to start `.running`. If `paused = false`, `initClosure` will be invoked immediately.
     ///
     /// - Parameter initClosure: e.g. { progress, fulfill, reject, configure in ... }. `fulfill(value)` and `reject(error)` handlers must be called inside this closure, where calling `progress(progressValue)` handler is optional. Also as options, `configure.pause`/`configure.resume`/`configure.cancel` closures can be set to gain control from outside e.g. `task.pause()`/`task.resume()`/`task.cancel()`. When using `configure`, make sure to use weak modifier when appropriate to avoid "task -> player" retaining which often causes retain cycle.
     ///
@@ -420,7 +420,7 @@ open class Task<Value, Error>: Cancellable, CustomStringConvertible
     private func _then<C: Canceller>(on queue: SwiftTaskQueue, _ canceller: inout C?, _ completionHandler: @escaping () -> Void)
     {
         switch self.state {
-            case .Fulfilled, .Rejected, .Cancelled:
+            case .fulfilled, .rejected, .cancelled:
                 if queue == .current {
                     completionHandler()
                 } else {
@@ -680,10 +680,10 @@ internal func _bindInnerTask<Value2, Error, Error2>(
     )
 {
     switch innerTask.state {
-        case .Fulfilled:
+        case .fulfilled:
             fulfill(innerTask.value!)
             return
-        case .Rejected, .Cancelled:
+        case .rejected, .cancelled:
             let (error2, isCancelled) = innerTask.errorInfo!
             
             // NOTE: innerTask's `error2` will be treated as `nil` if not same type as outerTask's `Error` type
@@ -710,10 +710,10 @@ internal func _bindInnerTask<Value2, Error, Error2>(
     configure.cancel = { innerTask.cancel(); return }
     
     // pause/cancel innerTask if descendant task is already paused/cancelled
-    if newMachine.state.rawValue == .Paused {
+    if newMachine.state.rawValue == .paused {
         innerTask.pause()
     }
-    else if newMachine.state.rawValue == .Cancelled {
+    else if newMachine.state.rawValue == .cancelled {
         innerTask.cancel()
     }
 }
@@ -762,7 +762,7 @@ extension Task
                         
                         fulfill(values)
                     } else {
-                        let pausedTask = tasks.first(where: { $0.state == .Paused })
+                        let pausedTask = tasks.first(where: { $0.state == .paused })
                         pausedTask?.resume()
                     }
                     

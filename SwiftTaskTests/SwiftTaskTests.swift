@@ -657,7 +657,7 @@ class SwiftTaskTests: _TestCase
             XCTFail("Should never reach here because of cancellation.")
         }.on { [unowned task] (error, isCancelled) in
             // upstream tasks also cancelled.
-            XCTAssertEqual(task.state, TaskState.Cancelled)
+            XCTAssertEqual(task.state, TaskState.cancelled)
 
             expect.fulfill()
         }
@@ -669,9 +669,9 @@ class SwiftTaskTests: _TestCase
             
             XCTAssertEqual(result, true)
             // upstream and downstream tasks are Cancelled.
-            XCTAssertEqual(task.state, TaskState.Cancelled)
-            XCTAssertEqual(voidTask.state, TaskState.Cancelled)
-            XCTAssertEqual(successFailureTask.state, TaskState.Cancelled)
+            XCTAssertEqual(task.state, TaskState.cancelled)
+            XCTAssertEqual(voidTask.state, TaskState.cancelled)
+            XCTAssertEqual(successFailureTask.state, TaskState.cancelled)
             
         }
         
@@ -713,7 +713,7 @@ class SwiftTaskTests: _TestCase
             
             task.cancel(error: "I get bored.")
             
-            XCTAssertEqual(task.state, TaskState.Cancelled)
+            XCTAssertEqual(task.state, TaskState.cancelled)
 
         }
         
@@ -750,10 +750,10 @@ class SwiftTaskTests: _TestCase
             
             task3.cancel(error: "I get bored.")
             
-            XCTAssertEqual(task3.state, TaskState.Cancelled)
+            XCTAssertEqual(task3.state, TaskState.cancelled)
             
             XCTAssertTrue(task2 != nil, "task2 should be created.")
-            XCTAssertEqual(task2!.state, TaskState.Cancelled, "task2 should be cancelled because task2 is created and then task3 (wrapper) is cancelled.")
+            XCTAssertEqual(task2!.state, TaskState.cancelled, "task2 should be cancelled because task2 is created and then task3 (wrapper) is cancelled.")
             
         }
         
@@ -792,16 +792,16 @@ class SwiftTaskTests: _TestCase
             
             task.pause()
             
-            XCTAssertEqual(task.state, TaskState.Paused)
+            XCTAssertEqual(task.state, TaskState.paused)
 
             // resume at t=0.6
             Async.main(after: 0.3) {
                 
-                XCTAssertEqual(task.state, TaskState.Paused)
+                XCTAssertEqual(task.state, TaskState.paused)
 
                 task.resume()
                 
-                XCTAssertEqual(task.state, TaskState.Running, "`task` should start running again.")
+                XCTAssertEqual(task.state, TaskState.running, "`task` should start running again.")
                 
             }
         }
@@ -836,33 +836,33 @@ class SwiftTaskTests: _TestCase
             // NOTE: task2 will be paused,
             task2.pause()
             
-            XCTAssertEqual(task2.state, TaskState.Paused)
+            XCTAssertEqual(task2.state, TaskState.paused)
 
             XCTAssertNil(innerTask, "`innerTask` should NOT be created yet.")
             
-            XCTAssertEqual(task.state, TaskState.Running, "`task` should NOT be paused.")
+            XCTAssertEqual(task.state, TaskState.running, "`task` should NOT be paused.")
             XCTAssertNil(task.value, "`task` should NOT be fulfilled yet.")
             
             // resume at t=0.6
             Async.main(after: 0.3) {
                 
-                XCTAssertEqual(task2.state, TaskState.Paused)
+                XCTAssertEqual(task2.state, TaskState.paused)
 
                 XCTAssertNotNil(innerTask, "`innerTask` should be created at this point.")
                 XCTAssertEqual(innerTask!.state, task2.state, "`innerTask!.state` should be same as `task2.state`.")
                 
-                XCTAssertEqual(task.state, TaskState.Fulfilled, "`task` should NOT be paused, and it should be fulfilled at this point.")
+                XCTAssertEqual(task.state, TaskState.fulfilled, "`task` should NOT be paused, and it should be fulfilled at this point.")
                 XCTAssertEqual(task.value!, "OK", "`task` should be fulfilled.")
                 
                 task2.resume()
                 
-                XCTAssertEqual(task2.state, TaskState.Running, "`task2` should be resumed.")
+                XCTAssertEqual(task2.state, TaskState.running, "`task2` should be resumed.")
                 
                 // check tasks's states at t=0.7
                 Async.main(after: 0.1) {
-                    XCTAssertEqual(task2.state, TaskState.Running)
+                    XCTAssertEqual(task2.state, TaskState.running)
                     XCTAssertEqual(innerTask!.state, task2.state, "`innerTask!.state` should be same as `task2.state`.")
-                    XCTAssertEqual(task.state, TaskState.Fulfilled)
+                    XCTAssertEqual(task.state, TaskState.fulfilled)
                 }
                 
             }
@@ -1312,8 +1312,8 @@ class SwiftTaskTests: _TestCase
         }
         
         allSettled(t1, t2).success { (results) -> Void in
-            XCTAssertEqual(results[0].state, .Fulfilled)
-            XCTAssertEqual(results[1].state, .Rejected)
+            XCTAssertEqual(results[0].state, .fulfilled)
+            XCTAssertEqual(results[1].state, .rejected)
             XCTAssertEqual(results[0].value, "1")
             XCTAssertNil(results[1].value)
             XCTAssertNil(results[0].errorInfo)
@@ -1366,7 +1366,7 @@ class SwiftTaskTests: _TestCase
             XCTFail()
         }.failure { (error, _) -> Void in
             XCTAssertEqual(error, 2)
-            XCTAssertEqual(t1.state, .Running)
+            XCTAssertEqual(t1.state, .running)
             expect.fulfill()
         }
         self.wait()
@@ -1625,12 +1625,12 @@ class SwiftTaskTests: _TestCase
         self.perform {
             
             groupedTask.pause()
-            XCTAssertEqual(groupedTask.state, TaskState.Paused)
+            XCTAssertEqual(groupedTask.state, TaskState.paused)
             
             Async.main(after: 1.0) {
                 
                 groupedTask.resume()
-                XCTAssertEqual(groupedTask.state, TaskState.Running)
+                XCTAssertEqual(groupedTask.state, TaskState.running)
                 
             }
         }
