@@ -1,4 +1,5 @@
 SwiftTask [![Build Status](https://app.bitrise.io/app/bebdd8c1213f827d/status.svg?token=xjEXJmfCmIES4UDUSc86lA)](https://app.bitrise.io/app/bebdd8c1213f827d)
+[![Actions Status](https://github.com/r-plus/SwiftTask/workflows/CI/badge.svg)](https://github.com/r-plus/SwiftTask/actions)
 =========
 
 [Promise](http://www.html5rocks.com/en/tutorials/es6/promises/) + pause + cancel + retry for Swift.
