@@ -683,7 +683,7 @@ class SwiftTaskTests: _TestCase
         let expect = self.expectation(description: #function)
 //        var progressCount = 0
         
-        let task = _interruptableTask(progressCount: 5)
+        let task = _interruptableTask()
         
 //        task.progress { oldProgress, newProgress in
 //
@@ -724,13 +724,13 @@ class SwiftTaskTests: _TestCase
     {
         let expect = self.expectation(description: #function)
         
-        let task1 = _interruptableTask(progressCount: 5)
+        let task1 = _interruptableTask()
         
         var task2: _InterruptableTask? = nil
         
         let task3 = task1.then(on: .current) { value, errorInfo -> _InterruptableTask in
             
-            task2 = _interruptableTask(progressCount: 5)
+            task2 = _interruptableTask()
             return task2!
             
         }
@@ -745,8 +745,8 @@ class SwiftTaskTests: _TestCase
             return "DUMMY"
         }
         
-        // cancel task3 at time between task1 fulfilled & before task2 completed (t=0.6)
-        Async.main(after: 0.6) {
+        // cancel task3 at time between task1 fulfilled & before task2 completed (t=0.7)
+        Async.main(after: 0.7) {
             
             task3.cancel(error: "I get bored.")
             
@@ -772,7 +772,7 @@ class SwiftTaskTests: _TestCase
         let expect = self.expectation(description: #function)
 //        var progressCount = 0
         
-        let task = _interruptableTask(progressCount: 5)
+        let task = _interruptableTask()
         
 //        task.progress { _ in
 //
@@ -787,15 +787,15 @@ class SwiftTaskTests: _TestCase
             
         }
         
-        // pause at t=0.3 (between _interruptableTask's 1st & 2nd delay before pause-check)
-        Async.main(after: 0.3) {
+        // pause at t=0.25 (between _interruptableTask's 1st & 2nd delay before pause-check)
+        Async.main(after: 0.25) {
             
             task.pause()
             
             XCTAssertEqual(task.state, TaskState.paused)
 
-            // resume at t=0.6
-            Async.main(after: 0.3) {
+            // resume at t=0.75
+            Async.main(after: 0.5) {
                 
                 XCTAssertEqual(task.state, TaskState.paused)
 
@@ -816,12 +816,12 @@ class SwiftTaskTests: _TestCase
         
         let expect = self.expectation(description: #function)
         
-        let task = _interruptableTask(progressCount: 5)
+        let task = _interruptableTask()
         weak var innerTask: _InterruptableTask?
         
         // chain async-task with `then`
         let task2 = task.then(on: .current) { (_, _) -> _InterruptableTask in
-            innerTask = _interruptableTask(progressCount: 5)
+            innerTask = _interruptableTask()
             return innerTask!
         }
         
@@ -843,8 +843,8 @@ class SwiftTaskTests: _TestCase
             XCTAssertEqual(task.state, TaskState.running, "`task` should NOT be paused.")
             XCTAssertNil(task.value, "`task` should NOT be fulfilled yet.")
             
-            // resume at t=0.6
-            Async.main(after: 0.3) {
+            // resume at t=0.7
+            Async.main(after: 0.4) {
                 
                 XCTAssertEqual(task2.state, TaskState.paused)
 
